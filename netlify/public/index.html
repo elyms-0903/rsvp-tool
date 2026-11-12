@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>出欠確認ページ作成ツール</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #fdf7ef; --surface: #ffffff; --surface-alt: #f8ead6;
+  --text: #3a352f; --dim: #8d857a; --border: #eae1d3;
+  --accent: #ad6f43; --accent-text: #ffffff;
+  --green: #648a68; --green-bg: #e7f1e5;
+  --amber: #9a7d4a; --amber-bg: #f8f0dc; --gray-bg: #f5f2ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #28231f; --surface: #332e29; --surface-alt: #40342a;
+    --text: #f3efe8; --dim: #b3aa9d; --border: #4d463d;
+    --accent: #d9a678; --accent-text: #2b2119;
+    --green: #a3c6a7; --green-bg: #354636;
+    --amber: #e0c48a; --amber-bg: #4c4028; --gray-bg: #332e29;
+  }
+}
+.theme-orange { --bg: #fdf7ef; --surface-alt: #f8ead6; --accent: #ad6f43; --accent-text: #ffffff; }
+.theme-red    { --bg: #fdf4f4; --surface-alt: #f8e2e2; --accent: #a86a6a; --accent-text: #ffffff; }
+.theme-pink   { --bg: #fdf4f8; --surface-alt: #f8e1ed; --accent: #a86a8c; --accent-text: #ffffff; }
+.theme-green  { --bg: #f4f9f4; --surface-alt: #e2eedd; --accent: #648a68; --accent-text: #ffffff; }
+.theme-blue   { --bg: #f3f7fd; --surface-alt: #e0eaf8; --accent: #6480a8; --accent-text: #ffffff; }
+.theme-teal   { --bg: #f2f9f7; --surface-alt: #ddf0ea; --accent: #5f8f88; --accent-text: #ffffff; }
+.theme-purple { --bg: #f8f5fd; --surface-alt: #eae3f8; --accent: #8468a8; --accent-text: #ffffff; }
+.theme-white {
+  --bg: #fefefd; --surface: #ffffff; --surface-alt: #f4f3f0;
+  --text: #3d3a36; --dim: #8d857a; --border: #e8e5e0;
+  --accent: #5d594f; --accent-text: #ffffff;
+  --green: #648a68; --green-bg: #e7f1e5;
+  --amber: #9a7d4a; --amber-bg: #f8f0dc; --gray-bg: #f4f3f0;
+}
+.theme-black {
+  --bg: #242220; --surface: #2e2c2a; --surface-alt: #3b3835;
+  --text: #f3f0ea; --dim: #b3aa9d; --border: #4d4942;
+  --accent: #e8dfcf; --accent-text: #33302b;
+  --green: #a3c6a7; --green-bg: #354636;
+  --amber: #e0c48a; --amber-bg: #4c4028; --gray-bg: #2e2c2a;
+}
+@media (prefers-color-scheme: dark) {
+  .theme-orange { --bg: #28231f; --surface-alt: #40342a; --accent: #d9a678; --accent-text: #2b2119; }
+  .theme-red    { --bg: #2a2222; --surface-alt: #453333; --accent: #d99f9f; --accent-text: #2d2020; }
+  .theme-pink   { --bg: #2c2328; --surface-alt: #47333f; --accent: #dda3bf; --accent-text: #2d2028; }
+  .theme-green  { --bg: #232a23; --surface-alt: #364536; --accent: #a3c6a7; --accent-text: #20301f; }
+  .theme-blue   { --bg: #232932; --surface-alt: #344253; --accent: #a3bede; --accent-text: #1f2a38; }
+  .theme-teal   { --bg: #222c2a; --surface-alt: #304743; --accent: #9ccabe; --accent-text: #1d2f2a; }
+  .theme-purple { --bg: #292531; --surface-alt: #403751; --accent: #c0aede; --accent-text: #2a2138; }
+  .theme-white {
+    --bg: #fefefd; --surface: #ffffff; --surface-alt: #f4f3f0;
+    --text: #3d3a36; --dim: #8d857a; --border: #e8e5e0;
+    --accent: #5d594f; --accent-text: #ffffff;
+    --green: #648a68; --green-bg: #e7f1e5;
+    --amber: #9a7d4a; --amber-bg: #f8f0dc; --gray-bg: #f4f3f0;
+  }
+  .theme-black {
+    --bg: #242220; --surface: #2e2c2a; --surface-alt: #3b3835;
+    --text: #f3f0ea; --dim: #b3aa9d; --border: #4d4942;
+    --accent: #e8dfcf; --accent-text: #33302b;
+    --green: #a3c6a7; --green-bg: #354636;
+    --amber: #e0c48a; --amber-bg: #4c4028; --gray-bg: #2e2c2a;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+button, select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2.75rem; }
+main { max-width: 36rem; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
+h2 { font-size: 1.5rem; line-height: 1.4; margin: 0; }
+h3 { font-size: 1.25rem; margin: 0; }
+h4, h5 { margin: 0; }
+p { margin: 0; }
+.dim { color: var(--dim); }
+.small { font-size: .875rem; }
+.xsmall { font-size: .75rem; }
+.mt1 { margin-top: .25rem; } .mt2 { margin-top: .5rem; } .mt3 { margin-top: .75rem; }
+.mt4 { margin-top: 1rem; } .mt5 { margin-top: 1.25rem; } .mt6 { margin-top: 1.5rem; } .mt8 { margin-top: 2rem; } .mt10 { margin-top: 2.5rem; }
+.card { border: 1px solid var(--border); background: var(--surface); border-radius: 1rem; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.card-alt { background: var(--surface-alt); border-radius: .75rem; padding: .75rem; }
+label.flabel, .flabel { display: block; font-size: 1rem; font-weight: 700; }
+input[type="text"], input[type="datetime-local"], textarea, select {
+  width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: .75rem; padding: .5rem .75rem; font-size: 1rem; line-height: 1.5; margin-top: .25rem;
+  font-family: inherit;
+}
+textarea { line-height: 1.6; }
+.passinput { letter-spacing: .5em; }
+.btn {
+  display: block; width: 100%; border: none; cursor: pointer; border-radius: .75rem;
+  padding: .75rem; font-size: 1.125rem; font-weight: 700; font-family: inherit;
+  background: var(--accent); color: var(--accent-text);
+}
+.btn:disabled { opacity: .4; cursor: default; }
+.btn-sub { font-size: 1rem; padding: .5rem; }
+.btn-outline { background: var(--surface); border: 2px solid var(--accent); color: var(--accent); }
+.btn-plain { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+.btn-danger { background: #dc2626; color: #fff; }
+.linklike { background: none; border: none; color: var(--dim); text-decoration: underline; cursor: pointer; font-size: .875rem; padding: .25rem .5rem; font-family: inherit; min-height: 0; }
+.err { color: #dc2626; font-size: .875rem; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; }
+.opt-card {
+  display: flex; align-items: flex-start; gap: .75rem; cursor: pointer;
+  border: 2px solid var(--border); background: var(--surface);
+  border-radius: .75rem; padding: .5rem .75rem;
+}
+.opt-card.checked { border-color: var(--accent); background: var(--surface-alt); }
+.opt-card input[type="radio"] { width: 1.25rem; height: 1.25rem; margin-top: .25rem; accent-color: var(--accent); flex-shrink: 0; }
+.stack2 > * + * { margin-top: .5rem; }
+.stack3 > * + * { margin-top: .75rem; }
+.stack4 > * + * { margin-top: 1rem; }
+.chip { display: inline-block; border-radius: 9999px; background: var(--surface-alt); padding: .125rem .5rem; font-size: .75rem; font-weight: 700; color: var(--accent); }
+.swatch { display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 9999px; border: 1px solid var(--border); flex-shrink: 0; }
+.theme-opt {
+  display: inline-flex; align-items: center; gap: .5rem; cursor: pointer;
+  border: 2px solid var(--border); background: var(--surface);
+  border-radius: 9999px; padding: .375rem .75rem .375rem .5rem; font-size: .875rem; font-weight: 700;
+}
+.theme-opt.checked { border-color: var(--text); background: var(--surface-alt); }
+.att-opt {
+  display: flex; align-items: center; gap: .75rem; cursor: pointer;
+  border: 2px solid var(--border); background: var(--surface);
+  border-radius: .75rem; padding: .75rem 1rem;
+}
+.att-box {
+  position: relative; width: 2rem; height: 2rem; flex-shrink: 0;
+  border: 2px solid var(--dim); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.125rem; font-weight: 700; color: #fff;
+}
+.headline-box { border-radius: 1rem; background: var(--accent); color: var(--accent-text); padding: 1rem; text-align: center; }
+.stat-box { border: 1px solid var(--border); background: var(--surface); border-radius: .75rem; padding: .75rem; text-align: center; }
+.divide > * + * { border-top: 1px solid var(--border); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.banner { border: 2px solid var(--accent); background: var(--surface-alt); border-radius: 1rem; padding: 1rem; }
+.sent-box { border: 2px solid var(--green); background: var(--surface); border-radius: 1rem; padding: 1.25rem; text-align: center; }
+.pool { border: 2px dashed var(--amber); border-radius: 1rem; background: var(--surface); padding: 1rem; }
+.rank-top { border: 2px solid var(--accent) !important; }
+fieldset { border: none; padding: 0; margin: 0; }
+legend { font-size: 1rem; font-weight: 700; padding: 0; }
+dl.info { border: 1px solid var(--border); background: var(--surface); border-radius: 1rem; padding: 1rem; }
+dl.info .row { display: flex; gap: .75rem; }
+dl.info .row + .row { margin-top: .5rem; }
+dl.info dt { width: 2.5rem; flex-shrink: 0; font-weight: 700; color: var(--accent); }
+dl.info dd { margin: 0; }
+.prewrap { white-space: pre-wrap; }
+.center { text-align: center; }
+.flex { display: flex; gap: .5rem; }
+.flex > .grow { flex: 1; min-width: 0; }
+.shrink0 { flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="approot" class="theme-orange">
+<main id="app"><p class="center dim" style="padding:2.5rem 0">読み込み中…</p></main>
+</div>
+<script>
+"use strict";
+/* ===== 共通ユーティリティ（元アプリ App.tsx / actions.ts と同じ規則） ===== */
+var WEEKDAYS = ["日","月","火","水","木","金","土"];
+var LATE_TIMES = ["16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
+var PASSCODE_RE = /^\d{4}$/;
+var MAX_DATES = 7;
+var MODE_LABEL = { single: "1日だけ", multi: "複数日開催", vote: "候補日から決める" };
+var THEME_OPTIONS = [
+  { value: "orange", label: "オレンジ", swatch: "#e0aa76" },
+  { value: "red",    label: "あか",     swatch: "#dda3a3" },
+  { value: "pink",   label: "さくら",   swatch: "#dda3bf" },
+  { value: "green",  label: "みどり",   swatch: "#a3c6a7" },
+  { value: "blue",   label: "あお",     swatch: "#a3bede" },
+  { value: "teal",   label: "みずいろ", swatch: "#9ccabe" },
+  { value: "purple", label: "むらさき", swatch: "#c0aede" },
+  { value: "white",  label: "しろ",     swatch: "#ffffff" },
+  { value: "black",  label: "くろ",     swatch: "#3b3835" }
+];
+function themeSwatch(t) { var o = THEME_OPTIONS.find(function(x){ return x.value === t; }); return o ? o.swatch : "#e0aa76"; }
+function themeLabel(t) { var o = THEME_OPTIONS.find(function(x){ return x.value === t; }); return o ? o.label : "オレンジ"; }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+/* datetime-local 値 "YYYY-MM-DDTHH:mm" を「11/29（日） 15:00」に整える（暦日ベースで曜日計算） */
+function formatDateLabel(dateValue) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(dateValue || "");
+  if (!m) return dateValue;
+  var wd = WEEKDAYS[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
+  return (+m[2]) + "/" + (+m[3]) + "（" + wd + "） " + m[4] + ":" + m[5];
+}
+function isPastDeadline(deadline) {
+  var v = (deadline || "").trim();
+  if (!v) return false;
+  var withSeconds = v.length === 16 ? v + ":00" : v;
+  var t = new Date(withSeconds + "+09:00").getTime();
+  if (isNaN(t)) return false;
+  return Date.now() > t + 59999;
+}
+function todayAt(time) {
+  var now = new Date();
+  var m = String(now.getMonth() + 1).padStart(2, "0");
+  var d = String(now.getDate()).padStart(2, "0");
+  return now.getFullYear() + "-" + m + "-" + d + "T" + time;
+}
+var DEFAULT_TITLE = "赤松課長新居祝い　たこ焼きパーティー";
+var DEFAULT_DATE_VALUE = "2026-11-29T15:00";
+var DEFAULT_DEADLINE = "2026-11-27T23:59";
+var DEFAULT_DESC = "赤松課長が社寮から新居に移ったので、\nそのお祝いにかこつけてパーティーしましょう\n\n出欠確認させてください";
+
+/* ===== API ===== */
+function api(action, args) {
+  return fetch("api/" + action, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args || {})
+  }).then(function(r) {
+    return r.json().then(function(j) {
+      if (!r.ok) throw new Error(j && j.error ? j.error : "request failed");
+      return j;
+    });
+  });
+}
+
+/* ===== 端末ローカルのページ記録 ===== */
+var MY_EVENTS_KEY = "rsvp-my-event-ids";
+function loadMyEventIds() {
+  try {
+    var raw = localStorage.getItem(MY_EVENTS_KEY);
+    var parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(function(x){ return typeof x === "number"; }) : [];
+  } catch (e) { return []; }
+}
+function rememberEventId(id) {
+  try {
+    var ids = loadMyEventIds();
+    if (!ids.includes(id)) localStorage.setItem(MY_EVENTS_KEY, JSON.stringify([id].concat(ids)));
+  } catch (e) {}
+}
+function forgetEventId(id) {
+  try {
+    localStorage.setItem(MY_EVENTS_KEY, JSON.stringify(loadMyEventIds().filter(function(x){ return x !== id; })));
+  } catch (e) {}
+}
+
+/* ===== ルーティング ===== */
+var view = { kind: "home" };
+var summaryPasscodes = {}; /* eventId -> passcode（画面遷移内のみ保持） */
+function parseHashView() {
+  var m = window.location.hash.match(/^#\/(survey|summary)\/(\d+)$/);
+  if (m) return { kind: m[1], eventId: Number(m[2]) };
+  return { kind: "home" };
+}
+function hashForView(v) { return v.kind === "home" ? "#/" : "#/" + v.kind + "/" + v.eventId; }
+function go(v) {
+  view = v;
+  var target = hashForView(v);
+  if (window.location.hash !== target) window.location.hash = target;
+  render();
+}
+window.addEventListener("hashchange", function() {
+  var parsed = parseHashView();
+  if (parsed.kind === "home" && view.kind === "home") return;
+  if (parsed.kind !== "home" && view.kind === parsed.kind && view.eventId === parsed.eventId) return;
+  view = parsed;
+  render();
+});
+function setTheme(t) { document.getElementById("approot").className = "theme-" + t; }
+function appEl() { return document.getElementById("app"); }
+function loadingHtml() { return '<p class="center dim" style="padding:2.5rem 0">読み込み中…</p>'; }
+function notFoundHtml(backView) {
+  return '<div class="center" style="padding:2.5rem 0"><p>ページが見つかりませんでした。</p>' +
+    '<button type="button" class="btn btn-plain btn-sub" style="margin-top:1rem;width:auto;padding:.5rem 1rem" data-act="go-home">トップに戻る</button></div>';
+}
+document.addEventListener("click", function(e) {
+  var t = e.target.closest("[data-act='go-home']");
+  if (t) go({ kind: "home" });
+});
+/* ===== ホーム（作成・編集・端末内一覧） ===== */
+var homeState = null;
+function freshHomeState() {
+  return {
+    editingId: null, title: DEFAULT_TITLE, mode: "single", theme: "orange",
+    dates: [{ dateValue: DEFAULT_DATE_VALUE, label: "" }],
+    deadline: DEFAULT_DEADLINE, place: "", description: DEFAULT_DESC,
+    passcode: "", currentPasscode: "", authError: null, createError: false, submitting: false,
+    myIds: loadMyEventIds(), myEvents: [], myLoaded: false,
+    unlockTarget: null, unlockPasscode: "", unlockError: false,
+    deleteTarget: null, deletePasscode: "", deleteError: false,
+    openId: "", openPasscode: "", openError: null
+  };
+}
+function renderHome() {
+  if (!homeState) homeState = freshHomeState();
+  var s = homeState;
+  setTheme(s.theme);
+  if (!s.myLoaded) {
+    s.myLoaded = true;
+    appEl().innerHTML = homeHtml();
+    bindHome();
+    s.myIds.forEach(function(id) {
+      api("getEventDetail", { eventId: id }).then(function(res) {
+        if (!res.event) {
+          forgetEventId(id);
+          s.myIds = s.myIds.filter(function(x){ return x !== id; });
+        } else {
+          s.myEvents.push(Object.assign({}, res.event, { hasPasscode: res.hasPasscode }));
+        }
+        if (view.kind === "home") { appEl().innerHTML = homeHtml(); bindHome(); }
+      }).catch(function() {});
+    });
+    return;
+  }
+  appEl().innerHTML = homeHtml();
+  bindHome();
+}
+function homeCanSubmit(s) {
+  var firstPicked = ((s.dates[0] && s.dates[0].dateValue) || (s.dates[0] && s.dates[0].label) || "") !== "";
+  var allPicked = s.dates.every(function(d){ return d.dateValue !== "" || d.label !== ""; });
+  return s.title.trim().length > 0 && PASSCODE_RE.test(s.passcode) && s.deadline.trim().length > 0 &&
+    firstPicked && allPicked && !s.submitting;
+}
+function homeHtml() {
+  var s = homeState;
+  var modeOptions = [
+    { value: "single", label: "1日だけ開催", note: "日時を1つ決めて出欠を取る" },
+    { value: "multi", label: "複数日開催", note: "全部の日程で開催する。各日ごとに出欠を取る" },
+    { value: "vote", label: "候補日から開催日を決める", note: "候補日を複数出し、来れる人数が多い日を集計で決める" }
+  ];
+  var h = "";
+  h += '<section aria-label="出欠ページを作る"><h2>' + (s.editingId ? "ページを編集する" : "出欠確認ページを作る") + "</h2>" +
+    '<p class="mt1 small dim">タイトル・時・所・内容と管理用パスコードを入れるだけで、下のような回答ページと集計ページができます。</p>';
+  h += '<div class="card mt5 stack4">';
+  /* タイトル */
+  h += '<div><label class="flabel" for="f-title">タイトル</label>' +
+    '<input type="text" id="f-title" value="' + esc(s.title) + '" placeholder="例：○○祝い たこ焼きパーティー"></div>';
+  /* 開催パターン */
+  h += '<fieldset><legend>開催パターン</legend><div class="mt1 stack2" role="radiogroup" aria-label="開催パターン">';
+  modeOptions.forEach(function(opt) {
+    h += '<label class="opt-card' + (s.mode === opt.value ? " checked" : "") + '">' +
+      '<input type="radio" name="mode" value="' + opt.value + '"' + (s.mode === opt.value ? " checked" : "") + '>' +
+      '<span><span style="display:block;font-weight:700">' + opt.label + '</span>' +
+      '<span class="small dim" style="display:block">' + opt.note + "</span></span></label>";
+  });
+  h += "</div></fieldset>";
+  /* 色 */
+  h += '<fieldset><legend>ページの色</legend><div class="mt2 flex" style="flex-wrap:wrap" role="radiogroup" aria-label="ページの色">';
+  THEME_OPTIONS.forEach(function(opt) {
+    h += '<label class="theme-opt' + (s.theme === opt.value ? " checked" : "") + '">' +
+      '<input type="radio" name="theme" value="' + opt.value + '"' + (s.theme === opt.value ? " checked" : "") + ' style="position:absolute;opacity:0">' +
+      '<span class="swatch" style="background-color:' + opt.swatch + '"></span>' + opt.label + "</label>";
+  });
+  h += '</div><p class="mt1 small dim">選ぶと画面全体がその色でプレビューされます。回答ページ・集計ページに適用されます。</p></fieldset>';
+  /* 日時 */
+  h += '<div><span class="flabel">' + (s.mode === "vote" ? "候補日時" : "時") + '</span><div class="mt1 stack3">';
+  s.dates.forEach(function(d, i) {
+    h += '<div style="border:1px solid var(--border);border-radius:.75rem;padding:.75rem">' +
+      '<div class="row-between"><label class="small" style="font-weight:700" for="f-date-' + i + '">' +
+      (s.mode === "single" ? "日時" : "日時 " + (i + 1)) + "</label>" +
+      (i > 0 ? '<button type="button" class="linklike" data-act="del-date" data-i="' + i + '">削除</button>' : "") + "</div>" +
+      (d.dateValue === "" && d.label !== "" ? '<p class="mt1 small dim">現在：' + esc(d.label) + "（カレンダーで選び直すと置き換わります）</p>" : "") +
+      '<input type="datetime-local" id="f-date-' + i + '" data-i="' + i + '" value="' + esc(d.dateValue) + '">' +
+      (d.dateValue ? '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-date-label-' + i + '">' + formatDateLabel(d.dateValue) + "</p>" : "") +
+      "</div>";
+  });
+  h += "</div>";
+  var firstPicked = ((s.dates[0] && s.dates[0].dateValue) || (s.dates[0] && s.dates[0].label) || "") !== "";
+  if (s.mode !== "single" && firstPicked && s.dates.length < MAX_DATES) {
+    h += '<button type="button" class="btn btn-plain mt3" style="border:2px dashed var(--accent);color:var(--accent);font-weight:700" data-act="add-date">＋ 日時を追加（あと' + (MAX_DATES - s.dates.length) + "件まで）</button>";
+  }
+  if (s.mode !== "single" && s.dates.length >= MAX_DATES) h += '<p class="mt2 small dim">日時は最大' + MAX_DATES + "件までです。</p>";
+  if (s.mode !== "single" && !firstPicked) h += '<p class="mt2 small dim">まず日時 1 をカレンダーで選ぶと、ここに「日時を追加」が出ます。</p>';
+  h += "</div>";
+  /* 回答期限 */
+  h += '<div><label class="flabel" for="f-deadline">回答期限</label>' +
+    '<input type="datetime-local" id="f-deadline" value="' + esc(s.deadline) + '">' +
+    (s.deadline ? '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-deadline-label">' + formatDateLabel(s.deadline) + " まで</p>" : "") +
+    '<p class="mt1 small dim" style="line-height:1.6">日付を選ぶと、その日の23:59が期限になります。期限を過ぎて届いた回答は、通常の集計には入らず「期限切れプール」に分けて受け付けます。回答ページにも期限が表示されます。</p></div>';
+  /* 所・内容 */
+  h += '<div><label class="flabel" for="f-place">所</label>' +
+    '<input type="text" id="f-place" value="' + esc(s.place) + '" placeholder="未定のままでもOK（ページでは「未定」と出ます）"></div>';
+  h += '<div><label class="flabel" for="f-desc">内容</label>' +
+    '<textarea id="f-desc" rows="5" placeholder="当日の案内や持ち物などを自由に">' + esc(s.description) + "</textarea></div>";
+  /* パスコード */
+  h += '<div><label class="flabel" for="f-pass">管理用パスコード（4桁の数字）</label>' +
+    '<input type="text" id="f-pass" class="passinput" value="' + esc(s.passcode) + '" placeholder="' +
+    (s.editingId ? "新しいパスコード（変えない場合も今のものを入力）" : "例：1234") + '" inputmode="numeric" autocomplete="off" maxlength="4">' +
+    '<p class="mt1 small dim" style="line-height:1.6">集計ページを見たり、このページを編集・削除するときに必要です。回答する人には不要なので、配るときはパスコードを伝えないでください。</p>' +
+    (s.passcode.length > 0 && !PASSCODE_RE.test(s.passcode) ? '<p class="mt1 err">パスコードは4桁の数字で入力してください。</p>' : "") +
+    "</div>";
+  if (s.authError) h += '<p class="err" role="alert">' + esc(s.authError) + "</p>";
+  if (s.createError) h += '<p class="err" role="alert">作成に失敗しました。もう一度お試しください。</p>';
+  h += '<button type="button" class="btn" data-act="submit-form"' + (homeCanSubmit(s) ? "" : " disabled") + ">" +
+    (s.submitting ? "作成中…" : s.editingId ? "変更を保存してページを見る" : "出欠ページを作成する") + "</button>";
+  if (s.editingId) h += '<button type="button" class="btn btn-plain btn-sub" data-act="cancel-edit">編集をやめる</button>';
+  h += "</div></section>";
+  /* 端末内一覧 */
+  h += '<section aria-label="この端末で作ったページ" class="mt10"><h3>この端末で作ったページ</h3>' +
+    '<p class="mt1 small dim" style="line-height:1.6">公開用の一覧は表示されません。ここには、この端末で作ったページと、パスコードで開いたページだけが出ます。</p>';
+  if (s.myIds.length === 0) {
+    h += '<p class="mt3 small dim" style="border:1px dashed var(--border);background:var(--surface);border-radius:.75rem;padding:1rem;line-height:1.6">この端末で作ったページはまだありません。上のフォームから作ると、ここに表示されます。別の端末で作ったページは、下の「ページ番号で開く」から追加できます。</p>';
+  }
+  h += '<div class="mt3 stack3">';
+  s.myEvents.forEach(function(ev) { h += myEventCardHtml(ev); });
+  h += "</div>";
+  /* ページ番号で開く */
+  h += '<div class="card mt4"><h4 style="font-size:1rem">ページ番号で開く</h4>' +
+    '<p class="mt1 small dim" style="line-height:1.6">別の端末で作ったページは、ページ番号とパスコードでこの端末のリストに追加できます。ページ番号は集計ページのタイトル下に表示されています。</p>' +
+    '<div class="mt3 flex">' +
+    '<div style="width:6rem" class="shrink0"><input type="text" id="open-id" value="' + esc(s.openId) + '" inputmode="numeric" autocomplete="off" placeholder="番号" style="margin-top:0"></div>' +
+    '<div class="grow"><input type="text" id="open-pass" class="passinput" value="' + esc(s.openPasscode) + '" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="パスコード（4桁）" style="margin-top:0"></div>' +
+    '<button type="button" class="btn shrink0" style="width:auto;padding:.5rem 1rem;font-size:1rem" data-act="open-by-num"' + (s.openId.trim() === "" ? " disabled" : "") + ">開く</button>" +
+    "</div>" +
+    (s.openError ? '<p class="mt2 err" role="alert">' + esc(s.openError) + "</p>" : "") +
+    "</div></section>";
+  return h;
+}
+function myEventCardHtml(ev) {
+  var s = homeState;
+  var h = '<article class="card"><h4 style="font-size:1.125rem;line-height:1.4">' + esc(ev.title) + "</h4>" +
+    '<p class="mt1 small dim"><span style="margin-right:.5rem" class="xsmall"><b>ページ番号 #' + ev.id + '</b></span>' +
+    '<span class="chip" style="margin-right:.5rem">' + MODE_LABEL[ev.mode] + "</span>" +
+    '<span class="swatch" style="width:.875rem;height:.875rem;vertical-align:middle;background-color:' + themeSwatch(ev.theme) + '"></span> ' + themeLabel(ev.theme) + "　" +
+    (ev.dates.length > 0 ? ev.dates.map(function(d){ return d.label; }).join("、") : (ev.eventTime || "日時未定")) +
+    (ev.place ? "　／　" + esc(ev.place) : "　／　場所未定") +
+    (ev.deadline ? "　／　回答期限 " + formatDateLabel(ev.deadline) + "まで" : "") + "</p>" +
+    '<div class="grid2 mt3">' +
+    '<button type="button" class="btn btn-sub" data-act="card-survey" data-id="' + ev.id + '">回答ページ</button>' +
+    '<button type="button" class="btn btn-outline btn-sub" data-act="card-summary" data-id="' + ev.id + '">集計を見る' + (ev.hasPasscode ? " 🔒" : "") + "</button>" +
+    '<button type="button" class="btn btn-plain btn-sub" style="font-size:.875rem" data-act="card-edit" data-id="' + ev.id + '">編集' + (ev.hasPasscode ? " 🔒" : "") + "</button>" +
+    '<button type="button" class="btn btn-plain btn-sub" style="font-size:.875rem;color:var(--dim)" data-act="card-delete" data-id="' + ev.id + '">削除' + (ev.hasPasscode ? " 🔒" : "") + "</button>" +
+    "</div>";
+  if (s.unlockTarget === ev.id) {
+    h += '<div class="card-alt mt3"><label class="small" style="font-weight:700" for="unlock-' + ev.id + '">編集するにはパスコード（4桁）を入力してください</label>' +
+      '<div class="mt2 flex"><input type="text" id="unlock-' + ev.id + '" class="passinput" value="' + esc(s.unlockPasscode) + '" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234" style="margin-top:0">' +
+      '<button type="button" class="btn shrink0" style="width:auto;padding:.5rem 1rem;font-size:1rem" data-act="unlock-go" data-id="' + ev.id + '"' + (PASSCODE_RE.test(s.unlockPasscode) ? "" : " disabled") + ">開く</button>" +
+      '<button type="button" class="btn btn-plain btn-sub shrink0" style="width:auto" data-act="unlock-cancel">やめる</button></div>' +
+      (s.unlockError ? '<p class="mt2 err" role="alert">パスコードが違います。</p>' : "") + "</div>";
+  }
+  if (s.deleteTarget === ev.id) {
+    h += '<div class="card-alt mt3"><p class="small" style="font-weight:700">このページと回答をすべて削除します。元に戻せません。</p>';
+    if (ev.hasPasscode) {
+      h += '<div class="mt2"><label class="small" style="font-weight:700" for="del-' + ev.id + '">パスコード（4桁）</label>' +
+        '<input type="text" id="del-' + ev.id + '" class="passinput" value="' + esc(s.deletePasscode) + '" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234"></div>';
+    }
+    if (s.deleteError) h += '<p class="mt2 err" role="alert">パスコードが違います。削除できませんでした。</p>';
+    h += '<div class="mt2 flex">' +
+      '<button type="button" class="btn btn-danger btn-sub shrink0" style="width:auto;padding:.5rem 1rem;font-size:.875rem" data-act="delete-go" data-id="' + ev.id + '"' + ((ev.hasPasscode && !PASSCODE_RE.test(s.deletePasscode)) ? " disabled" : "") + ">本当に削除する</button>" +
+      '<button type="button" class="btn btn-plain btn-sub shrink0" style="width:auto" data-act="delete-cancel">やめる</button></div></div>';
+  }
+  h += "</article>";
+  return h;
+}
+function refreshHome() { if (view.kind === "home") { appEl().innerHTML = homeHtml(); bindHome(); } }
+function bindHome() {
+  var s = homeState;
+  var el;
+  el = document.getElementById("f-title");
+  if (el) el.addEventListener("input", function() { s.title = el.value; refreshSubmitBtn(); });
+  document.querySelectorAll("input[name='mode']").forEach(function(r) {
+    r.addEventListener("change", function() {
+      s.mode = r.value;
+      if (s.mode === "single") s.dates = s.dates.slice(0, 1);
+      refreshHome();
+    });
+  });
+  document.querySelectorAll("input[name='theme']").forEach(function(r) {
+    r.addEventListener("change", function() { s.theme = r.value; setTheme(s.theme); refreshHome(); });
+  });
+  s.dates.forEach(function(d, i) {
+    var inp = document.getElementById("f-date-" + i);
+    if (!inp) return;
+    inp.addEventListener("focus", function() {
+      if (!inp.value && !d.label) { inp.value = todayAt("12:00"); s.dates[i] = { dateValue: inp.value, label: "" }; refreshHome(); refocusDate(i); }
+    });
+    inp.addEventListener("change", function() {
+      s.dates[i] = { dateValue: inp.value, label: "" };
+      refreshHome();
+    });
+  });
+  el = document.getElementById("f-deadline");
+  if (el) {
+    el.addEventListener("focus", function() { if (!el.value) { el.value = todayAt("23:59"); s.deadline = el.value; refreshHome(); } });
+    el.addEventListener("change", function() {
+      var v = el.value;
+      if (v.length >= 10 && v.slice(0, 10) !== s.deadline.slice(0, 10)) s.deadline = v.slice(0, 10) + "T23:59";
+      else s.deadline = v;
+      refreshHome();
+    });
+  }
+  el = document.getElementById("f-place");
+  if (el) el.addEventListener("input", function() { s.place = el.value; });
+  el = document.getElementById("f-desc");
+  if (el) el.addEventListener("input", function() { s.description = el.value; });
+  el = document.getElementById("f-pass");
+  if (el) el.addEventListener("input", function() {
+    s.passcode = el.value.replace(/\D/g, "").slice(0, 4);
+    if (el.value !== s.passcode) el.value = s.passcode;
+    refreshHomeSoft();
+  });
+  el = document.getElementById("open-id");
+  if (el) el.addEventListener("input", function() { s.openId = el.value.replace(/\D/g, "").slice(0, 9); if (el.value !== s.openId) el.value = s.openId; refreshHomeSoft(); });
+  el = document.getElementById("open-pass");
+  if (el) el.addEventListener("input", function() { s.openPasscode = el.value.replace(/\D/g, "").slice(0, 4); if (el.value !== s.openPasscode) el.value = s.openPasscode; });
+  document.querySelectorAll("[data-act]").forEach(function(b) {
+    b.addEventListener("click", function() { homeAction(b.getAttribute("data-act"), b); });
+  });
+  var unlockInp = s.unlockTarget ? document.getElementById("unlock-" + s.unlockTarget) : null;
+  if (unlockInp) unlockInp.addEventListener("input", function() {
+    s.unlockPasscode = unlockInp.value.replace(/\D/g, "").slice(0, 4);
+    if (unlockInp.value !== s.unlockPasscode) unlockInp.value = s.unlockPasscode;
+    refreshHomeSoft();
+  });
+  var delInp = s.deleteTarget ? document.getElementById("del-" + s.deleteTarget) : null;
+  if (delInp) delInp.addEventListener("input", function() {
+    s.deletePasscode = delInp.value.replace(/\D/g, "").slice(0, 4);
+    if (delInp.value !== s.deletePasscode) delInp.value = s.deletePasscode;
+    refreshHomeSoft();
+  });
+}
+function refocusDate(i) { var n = document.getElementById("f-date-" + i); if (n) { n.focus(); try { n.showPicker(); } catch (e) {} } }
+/* フォーカスを奪わず、ボタンの有効/無効だけ更新する */
+function refreshSubmitBtn() {
+  var s = homeState; if (!s) return;
+  var btn = document.querySelector("[data-act='submit-form']");
+  if (btn) btn.disabled = !homeCanSubmit(s);
+}
+function refreshHomeSoft() { refreshSubmitBtn();
+  var s = homeState;
+  var ob = document.querySelector("[data-act='open-by-num']");
+  if (ob) ob.disabled = s.openId.trim() === "";
+  var ub = document.querySelector("[data-act='unlock-go']");
+  if (ub) ub.disabled = !PASSCODE_RE.test(s.unlockPasscode);
+  var db = document.querySelector("[data-act='delete-go']");
+  if (db) { var ev = s.myEvents.find(function(x){ return x.id === s.deleteTarget; }); if (ev) db.disabled = ev.hasPasscode && !PASSCODE_RE.test(s.deletePasscode); }
+}
+function homeAction(act, b) {
+  var s = homeState;
+  var id = b.getAttribute("data-id") ? Number(b.getAttribute("data-id")) : null;
+  if (act === "add-date") { s.dates.push({ dateValue: todayAt("12:00"), label: "" }); refreshHome(); }
+  else if (act === "del-date") { s.dates.splice(Number(b.getAttribute("data-i")), 1); refreshHome(); }
+  else if (act === "submit-form") { submitHomeForm(); }
+  else if (act === "cancel-edit") { var keep = { myIds: s.myIds, myEvents: s.myEvents, myLoaded: true }; homeState = freshHomeState(); homeState.myIds = keep.myIds; homeState.myEvents = keep.myEvents; homeState.myLoaded = true; refreshHome(); }
+  else if (act === "card-survey") { go({ kind: "survey", eventId: id }); }
+  else if (act === "card-summary") { go({ kind: "summary", eventId: id }); }
+  else if (act === "card-edit") {
+    s.deleteTarget = null;
+    var ev = s.myEvents.find(function(x){ return x.id === id; });
+    if (!ev) return;
+    if (!ev.hasPasscode) beginEdit(ev, "");
+    else { s.unlockTarget = id; s.unlockPasscode = ""; s.unlockError = false; refreshHome(); }
+  }
+  else if (act === "unlock-cancel") { s.unlockTarget = null; refreshHome(); }
+  else if (act === "unlock-go") {
+    api("verifyPasscode", { eventId: id, passcode: s.unlockPasscode }).then(function(res) {
+      if (!res.ok) { s.unlockError = true; refreshHome(); return; }
+      var ev = s.myEvents.find(function(x){ return x.id === id; });
+      var pc = s.unlockPasscode;
+      rememberEventId(id);
+      s.unlockTarget = null; s.unlockPasscode = ""; s.unlockError = false;
+      if (ev) beginEdit(ev, pc);
+    }).catch(function() { s.unlockError = true; refreshHome(); });
+  }
+  else if (act === "card-delete") { s.unlockTarget = null; s.deleteTarget = id; s.deletePasscode = ""; s.deleteError = false; refreshHome(); }
+  else if (act === "delete-cancel") { s.deleteTarget = null; refreshHome(); }
+  else if (act === "delete-go") {
+    api("deleteEvent", { id: id, passcode: s.deletePasscode }).then(function(res) {
+      if (!res.ok) { s.deleteError = true; refreshHome(); return; }
+      s.deleteTarget = null; s.deletePasscode = ""; s.deleteError = false;
+      forgetEventId(id);
+      s.myIds = s.myIds.filter(function(x){ return x !== id; });
+      s.myEvents = s.myEvents.filter(function(x){ return x.id !== id; });
+      refreshHome();
+    }).catch(function() { s.deleteError = true; refreshHome(); });
+  }
+  else if (act === "open-by-num") {
+    var numId = Number(s.openId);
+    Promise.all([
+      api("getEventDetail", { eventId: numId }),
+      api("verifyPasscode", { eventId: numId, passcode: s.openPasscode })
+    ]).then(function(rs) {
+      var detail = rs[0], verify = rs[1];
+      if (!detail.event) { s.openError = "そのページ番号のページは見つかりませんでした。"; refreshHome(); return; }
+      if (!verify.ok) { s.openError = "パスコードが違います。"; refreshHome(); return; }
+      s.openError = null; s.openId = ""; s.openPasscode = "";
+      rememberEventId(numId);
+      if (!s.myIds.includes(numId)) s.myIds = [numId].concat(s.myIds);
+      if (!s.myEvents.some(function(x){ return x.id === numId; }))
+        s.myEvents = [Object.assign({}, detail.event, { hasPasscode: detail.hasPasscode })].concat(s.myEvents);
+      refreshHome();
+    }).catch(function() { s.openError = "開けませんでした。もう一度お試しください。"; refreshHome(); });
+  }
+}
+function beginEdit(ev, pc) {
+  var s = homeState;
+  s.editingId = ev.id;
+  s.currentPasscode = pc;
+  s.title = ev.title; s.mode = ev.mode; s.theme = ev.theme;
+  s.dates = ev.dates.length > 0
+    ? ev.dates.map(function(d){ return { dateValue: d.dateValue, label: d.label }; })
+    : [{ dateValue: "", label: ev.eventTime }];
+  s.deadline = ev.deadline || "";
+  s.place = ev.place; s.description = ev.description;
+  s.passcode = ""; s.authError = null;
+  setTheme(ev.theme);
+  refreshHome();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function submitHomeForm() {
+  var s = homeState;
+  if (!homeCanSubmit(s)) return;
+  s.submitting = true; s.createError = false; refreshHome();
+  var done = function() { s.submitting = false; };
+  if (s.editingId) {
+    api("updateEvent", {
+      id: s.editingId, currentPasscode: s.currentPasscode,
+      title: s.title, mode: s.mode, theme: s.theme,
+      dates: s.dates.map(function(d){ return { dateValue: d.dateValue, label: d.label }; }),
+      place: s.place, description: s.description, deadline: s.deadline, passcode: s.passcode
+    }).then(function(res) {
+      done();
+      if (!res.ok) { s.authError = "パスコードが違います。編集は開けていても、保存には今のパスコードの認証が必要です。"; refreshHome(); return; }
+      var id = s.editingId, pc = s.passcode;
+      summaryPasscodes[id] = pc;
+      /* 一覧の表示も更新する */
+      api("getEventDetail", { eventId: id }).then(function(d) {
+        if (d.event) {
+          s.myEvents = s.myEvents.map(function(x){ return x.id === id ? Object.assign({}, d.event, { hasPasscode: d.hasPasscode }) : x; });
+        }
+        go({ kind: "summary", eventId: id });
+      }).catch(function() { go({ kind: "summary", eventId: id }); });
+    }).catch(function() { done(); s.createError = true; refreshHome(); });
+  } else {
+    api("createEvent", {
+      title: s.title, mode: s.mode, theme: s.theme,
+      dates: s.dates.filter(function(d){ return d.dateValue; }).map(function(d){ return { dateValue: d.dateValue }; }),
+      place: s.place, description: s.description, deadline: s.deadline, passcode: s.passcode
+    }).then(function(res) {
+      done();
+      rememberEventId(res.event.id);
+      if (!s.myIds.includes(res.event.id)) s.myIds = [res.event.id].concat(s.myIds);
+      s.myEvents = [Object.assign({}, res.event, { hasPasscode: true })].concat(s.myEvents);
+      s.passcode = "";
+      go({ kind: "survey", eventId: res.event.id, created: true });
+    }).catch(function() { done(); s.createError = true; refreshHome(); });
+  }
+}
+/* ===== 回答ページ ===== */
+var surveyState = null;
+function renderSurvey(eventId, created) {
+  appEl().innerHTML = loadingHtml();
+  api("getEventDetail", { eventId: eventId }).then(function(res) {
+    if (view.kind !== "survey" || view.eventId !== eventId) return;
+    if (!res.event) { appEl().innerHTML = notFoundHtml(); return; }
+    surveyState = { ev: res.event, name: "", answers: {}, sentName: null, sentExpired: false, error: false, sending: false, created: !!created };
+    setTheme(res.event.theme);
+    drawSurvey();
+  }).catch(function() {
+    if (view.kind === "survey") appEl().innerHTML = notFoundHtml();
+  });
+}
+function surveyLabels(ev) {
+  return ev.mode === "vote"
+    ? { join: "参加できます", absent: "参加できません", late: "遅れて参加できます" }
+    : { join: "参加", absent: "不参加", late: "遅れていきます" };
+}
+function drawSurvey() {
+  var st = surveyState, ev = st.ev;
+  var isVote = ev.mode === "vote";
+  var labels = surveyLabels(ev);
+  var deadlinePassed = ev.deadline ? isPastDeadline(ev.deadline) : false;
+  var h = '<div style="padding-bottom:2.5rem;position:relative">';
+  h += '<button type="button" class="linklike" data-sact="top">← トップ</button>';
+  if (st.created) {
+    h += '<div class="banner mt3" role="status"><p style="font-weight:700">ページを作成しました！</p>' +
+      '<p class="mt1 small" style="line-height:1.6">このページが、あなたの出欠確認ページ専用のリンクです。一覧には表示されないので、<b>このページをブックマークしてください。</b></p>' +
+      '<p class="mt2 small" style="background:var(--surface);border-radius:.75rem;padding:.5rem .75rem;font-weight:700;word-break:break-all">専用リンク：#/survey/' + ev.id + "</p>" +
+      '<p class="mt1 xsmall dim" style="line-height:1.6">アドレスの末尾がこの形になっていれば、そのページ専用のリンクです。回答を集めるときは、このページのアドレスをそのまま参加者に送ってください。</p>' +
+      '<p class="mt1 small dim" style="line-height:1.6">集計を見るときは、このページ右下の「集計を見る」から、作成時に決めたパスコードで開けます。</p></div>';
+  }
+  h += '<header class="mt3"><h2 style="font-size:1.75rem">' + esc(ev.title) + '</h2><dl class="info mt4">';
+  h += '<div class="row"><dt>時</dt><dd>';
+  if (ev.dates.length > 0) {
+    h += "<ul style='margin:0;padding:0;list-style:none'>";
+    ev.dates.forEach(function(d) { h += "<li>" + esc(d.label) + "</li>"; });
+    h += "</ul>";
+  } else h += esc(ev.eventTime || "未定");
+  if (ev.mode === "multi") h += '<span class="small dim" style="display:block;margin-top:.25rem">全部の日程で開催します。各日ごとに出欠を教えてください。</span>';
+  if (isVote) h += '<span class="small dim" style="display:block;margin-top:.25rem">候補日です。来れる人数が多い日に開催します。各日ごとに都合を教えてください。</span>';
+  h += "</dd></div>";
+  h += '<div class="row"><dt>所</dt><dd>' + esc(ev.place || "未定") + "</dd></div>";
+  if (ev.deadline) {
+    h += '<div class="row"><dt>期限</dt><dd>回答期限：' + formatDateLabel(ev.deadline) + "まで" +
+      (deadlinePassed ? '<span class="small" style="display:block;margin-top:.25rem;font-weight:700;color:var(--amber)">期限を過ぎています。今から送信すると「期限切れ」として別枠で受け付けます。</span>' : "") +
+      "</dd></div>";
+  }
+  if (ev.description) h += '<dd class="prewrap" style="padding-top:.25rem;line-height:1.6">' + esc(ev.description) + "</dd>";
+  h += "</dl></header>";
+  if (st.sentName) {
+    h += '<div class="sent-box mt6" role="status"><p style="font-size:2.25rem">🎉</p>' +
+      '<p class="mt2" style="font-size:1.25rem;font-weight:700">送信しました！</p>' +
+      '<p class="mt1 dim">' + esc(st.sentName) + " さん、回答ありがとうございます。</p>" +
+      (st.sentExpired ? '<p class="mt2 small" style="background:var(--amber-bg);border-radius:.75rem;padding:.5rem .75rem;font-weight:700;color:var(--amber)">回答期限を過ぎていたため、「期限切れ」として別枠で受け付けました。通常の集計には入りません。</p>' : "") +
+      '<button type="button" class="btn btn-plain mt4" data-sact="again">もう1人分を回答する</button></div>';
+  } else {
+    h += '<form class="mt6" id="survey-form"><div><label class="flabel" for="r-name" style="font-size:1.125rem">名前</label>' +
+      '<input type="text" id="r-name" value="' + esc(st.name) + '" placeholder="お名前を入力してください" autocomplete="name" style="padding:.75rem;font-size:1.125rem"></div>';
+    ev.dates.forEach(function(d, i) {
+      var a = st.answers[d.id] || { status: null, lateTime: "16:00" };
+      h += '<fieldset class="mt6"><legend style="font-size:1.125rem">' +
+        (ev.mode === "single" ? "出欠" : esc(d.label) + " の" + (isVote ? "都合" : "出欠")) +
+        (ev.mode !== "single" ? '<span class="small dim" style="margin-left:.5rem;font-weight:400">' + (i + 1) + "件目</span>" : "") +
+        "</legend><div class='mt2 stack2' role='radiogroup' aria-label='出欠'>";
+      var opts = [
+        { value: "join", color: "#648a68", bg: "var(--green-bg)" },
+        { value: "absent", color: "#8d857a", bg: "var(--gray-bg)" },
+        { value: "late", color: "#9a7d4a", bg: "var(--amber-bg)" }
+      ];
+      opts.forEach(function(opt) {
+        var checked = a.status === opt.value;
+        h += '<label class="att-opt" data-date="' + d.id + '" data-status="' + opt.value + '" style="border-color:' + (checked ? opt.color : "var(--border)") + ";background:" + (checked ? opt.bg : "var(--surface)") + '">' +
+          '<span class="att-box" style="border-color:' + (checked ? opt.color : "var(--dim)") + ";background:" + (checked ? opt.color : "transparent") + '">' + (checked ? "✓" : "") + "</span>" +
+          '<span style="font-size:1.125rem;font-weight:700">' + labels[opt.value] + "</span></label>";
+      });
+      h += "</div>";
+      if (a.status === "late") {
+        h += '<div class="mt3" style="background:var(--amber-bg);border-radius:.75rem;padding:1rem">' +
+          '<label class="flabel" for="r-late-' + d.id + '">何時頃に着きますか？</label>' +
+          '<select id="r-late-' + d.id + '" data-date="' + d.id + '" style="padding:.75rem;font-size:1.125rem">' +
+          LATE_TIMES.map(function(t) { return '<option value="' + t + '"' + (a.lateTime === t ? " selected" : "") + ">" + t + "頃</option>"; }).join("") +
+          "</select></div>";
+      }
+      h += "</fieldset>";
+    });
+    if (st.error) h += '<p class="err mt3" role="alert">送信に失敗しました。もう一度お試しください。</p>';
+    var allAnswered = ev.dates.length > 0 && ev.dates.every(function(d){ return st.answers[d.id] && st.answers[d.id].status != null; });
+    var canSubmit = st.name.trim().length > 0 && allAnswered && !st.sending;
+    h += '<button type="submit" class="btn mt6" style="padding:1rem;font-size:1.25rem"' + (canSubmit ? "" : " disabled") + ">" +
+      (st.sending ? "送信中…" : deadlinePassed ? "期限切れとして送信する" : "送信する") + "</button>";
+    if (!canSubmit && !st.sending) {
+      h += '<p class="mt2 small dim center">' + (ev.mode === "single" ? "名前と出欠を選ぶと送信できます" : "名前と、すべての日時の回答を選ぶと送信できます") + "</p>";
+    }
+    h += "</form>";
+  }
+  h += '<div class="mt10" style="text-align:right"><button type="button" class="linklike" style="font-size:.75rem" data-sact="summary">集計を見る</button></div>';
+  h += "</div>";
+  appEl().innerHTML = h;
+  bindSurvey();
+}
+function bindSurvey() {
+  var st = surveyState;
+  document.querySelectorAll("[data-sact]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      var act = b.getAttribute("data-sact");
+      if (act === "top") go({ kind: "home" });
+      else if (act === "summary") go({ kind: "summary", eventId: st.ev.id });
+      else if (act === "again") { st.sentName = null; st.sentExpired = false; st.name = ""; st.answers = {}; drawSurvey(); }
+    });
+  });
+  var nameInp = document.getElementById("r-name");
+  if (nameInp) nameInp.addEventListener("input", function() { st.name = nameInp.value; drawSurveySoft(); });
+  document.querySelectorAll(".att-opt").forEach(function(l) {
+    l.addEventListener("click", function() {
+      var dateId = Number(l.getAttribute("data-date"));
+      var cur = st.answers[dateId] || { status: null, lateTime: "16:00" };
+      st.answers[dateId] = { status: l.getAttribute("data-status"), lateTime: cur.lateTime };
+      drawSurvey();
+    });
+  });
+  document.querySelectorAll("select[data-date]").forEach(function(sel) {
+    sel.addEventListener("change", function() {
+      var dateId = Number(sel.getAttribute("data-date"));
+      var cur = st.answers[dateId] || { status: null, lateTime: "16:00" };
+      st.answers[dateId] = { status: cur.status, lateTime: sel.value };
+    });
+  });
+  var form = document.getElementById("survey-form");
+  if (form) form.addEventListener("submit", function(e) {
+    e.preventDefault();
+    var ev = st.ev;
+    var allAnswered = ev.dates.every(function(d){ return st.answers[d.id] && st.answers[d.id].status != null; });
+    if (!(st.name.trim().length > 0 && allAnswered) || st.sending) return;
+    st.sending = true; st.error = false; drawSurvey();
+    api("submitResponse", {
+      eventId: ev.id, name: st.name.trim(),
+      answers: ev.dates.map(function(d) {
+        var a = st.answers[d.id];
+        return { dateId: d.id, status: a.status, lateTime: a.status === "late" ? a.lateTime : null };
+      })
+    }).then(function(res) {
+      st.sending = false; st.sentName = st.name.trim(); st.sentExpired = res.expired;
+      drawSurvey();
+    }).catch(function() { st.sending = false; st.error = true; drawSurvey(); });
+  });
+}
+function drawSurveySoft() {
+  var st = surveyState; if (!st || st.sentName) return;
+  var ev = st.ev;
+  var allAnswered = ev.dates.length > 0 && ev.dates.every(function(d){ return st.answers[d.id] && st.answers[d.id].status != null; });
+  var btn = document.querySelector("#survey-form button[type='submit']");
+  if (btn) btn.disabled = !(st.name.trim().length > 0 && allAnswered && !st.sending);
+}
+/* ===== 集計ページ ===== */
+var summaryState = null;
+function renderSummary(eventId) {
+  var passcode = summaryPasscodes[eventId] != null ? summaryPasscodes[eventId] : null;
+  summaryState = { eventId: eventId, ev: null, responses: [], authorized: false, passcode: passcode, input: "", wrongPass: false, confirmId: null, loaded: false };
+  appEl().innerHTML = loadingHtml();
+  api("getEventDetail", { eventId: eventId }).then(function(res) {
+    if (view.kind !== "summary" || view.eventId !== eventId) return;
+    if (!res.event) { appEl().innerHTML = notFoundHtml(); summaryState.loaded = true; return; }
+    summaryState.ev = res.event;
+    setTheme(res.event.theme);
+    if (passcode !== null) {
+      loadSummary();
+    } else {
+      summaryState.loaded = true;
+      drawSummary();
+    }
+  }).catch(function() { if (view.kind === "summary") appEl().innerHTML = notFoundHtml(); });
+}
+function loadSummary() {
+  var st = summaryState;
+  api("getSummary", { eventId: st.eventId, passcode: st.passcode || "" }).then(function(res) {
+    if (view.kind !== "summary" || view.eventId !== st.eventId) return;
+    st.loaded = true;
+    st.authorized = res.authorized === true;
+    if (res.event) st.ev = res.event;
+    st.responses = res.responses || [];
+    if (st.authorized) rememberEventId(st.eventId);
+    else if (st.passcode !== null) st.wrongPass = true;
+    drawSummary();
+  }).catch(function() { st.loaded = true; drawSummary(); });
+}
+function sumLabels(ev) {
+  return ev.mode === "vote"
+    ? { join: "参加できる", late: "遅れて参加できる", absent: "参加できない" }
+    : { join: "参加", late: "遅れてくる", absent: "不参加" };
+}
+function byDate(st, dateId) {
+  var pick = function(status) {
+    var out = [];
+    st.responses.filter(function(r){ return !r.expired; }).forEach(function(r) {
+      var a = r.answers.find(function(x){ return x.dateId === dateId; });
+      if (a && a.status === status) out.push({ r: r, a: a });
+    });
+    return out;
+  };
+  return { join: pick("join"), late: pick("late"), absent: pick("absent") };
+}
+function drawSummary() {
+  var st = summaryState, ev = st.ev;
+  if (!ev) { appEl().innerHTML = notFoundHtml(); return; }
+  if (!st.authorized) {
+    appEl().innerHTML =
+      '<div style="padding-bottom:2rem"><button type="button" class="linklike" data-mact="survey">← 回答ページ</button>' +
+      '<h2 class="mt3">' + esc(ev.title) + '</h2><p class="mt1 xsmall dim">集計ページ　ページ番号 #' + ev.id + "</p>" +
+      '<section class="card mt5 center" aria-label="パスコード入力" style="padding:1.25rem"><p style="font-size:2.25rem">🔒</p>' +
+      '<p class="mt2" style="font-size:1.125rem;font-weight:700">集計はパスコードで保護されています</p>' +
+      '<p class="mt1 small dim" style="line-height:1.6">ページを作ったときに決めた4桁の数字を入力してください。</p>' +
+      '<form id="pass-form" class="mt4"><label class="dim" for="s-pass" style="position:absolute;left:-9999px">管理用パスコード</label>' +
+      '<input type="text" id="s-pass" class="passinput" value="' + esc(st.input) + '" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234" style="text-align:center;font-size:1.5rem;padding:.75rem;margin-top:0">' +
+      (st.wrongPass ? '<p class="mt2 err" role="alert">パスコードが違います。</p>' : "") +
+      '<button type="submit" class="btn mt3" data-mact="pass-submit"' + (st.input.length !== 4 ? " disabled" : "") + ">集計を開く</button></form></section>" +
+      '<button type="button" class="linklike mt8" data-mact="top">← トップに戻る</button></div>';
+    bindSummary();
+    return;
+  }
+  var labels = sumLabels(ev);
+  var isVote = ev.mode === "vote";
+  var active = st.responses.filter(function(r){ return !r.expired; });
+  var expired = st.responses.filter(function(r){ return r.expired; });
+  var h = '<div style="padding-bottom:2rem"><div class="row-between">' +
+    '<button type="button" class="linklike" data-mact="survey">← 回答ページ</button>' +
+    '<button type="button" class="btn btn-plain btn-sub shrink0" style="width:auto;padding:.25rem .75rem;font-size:.875rem;min-height:0" data-mact="reload">更新</button></div>';
+  h += '<h2 class="mt3">' + esc(ev.title) + '</h2>' +
+    '<p class="mt1 small dim">' + (ev.dates.length > 0 ? ev.dates.map(function(d){ return d.label; }).join("、") : esc(ev.eventTime || "日時未定")) + (ev.place ? "　／　" + esc(ev.place) : "") + "</p>" +
+    '<p class="mt1 xsmall dim">ページ番号 #' + ev.id + "　集計ページ（" + MODE_LABEL[ev.mode] + "）　回答した人 " + active.length + "人" +
+    (expired.length > 0 ? "（期限切れ " + expired.length + "人）" : "") + "</p>" +
+    (ev.deadline ? '<p class="mt1 xsmall dim">回答期限：' + formatDateLabel(ev.deadline) + "まで</p>" : "");
+  if (active.length === 0 && expired.length === 0) {
+    h += '<p class="mt5 center small dim" style="border:1px dashed var(--border);background:var(--surface);border-radius:.75rem;padding:1.25rem;line-height:1.6">まだ回答がありません。<br>回答ページから送信されると、ここに名前と人数が表示されます。</p>';
+  } else if (ev.mode === "single") {
+    if (ev.dates[0]) h += '<div class="mt5">' + dateBlockHtml(st, ev.dates[0], labels) + "</div>";
+  } else {
+    if (isVote) h += voteRankingHtml(st, labels);
+    h += '<div class="mt6" style="display:flex;flex-direction:column;gap:2rem">';
+    ev.dates.forEach(function(d) {
+      h += '<div><h3 style="font-size:1.125rem">' + esc(d.label) + ' の内訳</h3><div class="mt2">' + dateBlockHtml(st, d, labels) + "</div></div>";
+    });
+    h += "</div>";
+  }
+  if (expired.length > 0) h += expiredPoolHtml(st, expired, labels);
+  h += '<button type="button" class="linklike mt8" data-mact="top">← トップに戻る</button></div>';
+  appEl().innerHTML = h;
+  bindSummary();
+}
+function nameSectionHtml(st, label, list, color, showTime) {
+  var h = '<section class="card mt3" aria-label="' + esc(label) + '" style="padding:1rem"><h5 style="font-size:1rem;color:' + color + '">' +
+    esc(label) + ' <span style="color:var(--text)">' + list.length + "人</span></h5>";
+  if (list.length === 0) h += '<p class="mt2 small dim">まだいません</p>';
+  else {
+    h += '<ul class="divide" style="margin:.25rem 0 0;padding:0;list-style:none">';
+    list.forEach(function(x) { h += respRowHtml(st, x.r, x.a, showTime); });
+    h += "</ul>";
+  }
+  return h + "</section>";
+}
+function respRowHtml(st, r, a, showTime) {
+  var h = '<li class="row-between" style="padding:.5rem 0"><span>' + esc(r.name) +
+    (showTime && a.lateTime ? '<span style="margin-left:.25rem;font-weight:700;color:var(--amber)">（' + esc(a.lateTime) + "頃）</span>" : "") + "</span>";
+  if (st.confirmId === r.id) {
+    h += '<span class="flex shrink0" style="align-items:center"><span class="xsmall dim">全日程分を削除</span>' +
+      '<button type="button" class="btn btn-danger shrink0" style="width:auto;padding:.25rem .5rem;font-size:.75rem;min-height:0" data-mact="del-resp" data-id="' + r.id + '">削除する</button></span>';
+  } else {
+    h += '<button type="button" class="linklike shrink0" style="font-size:.75rem" data-mact="confirm-resp" data-id="' + r.id + '">削除</button>';
+  }
+  return h + "</li>";
+}
+function dateBlockHtml(st, d, labels) {
+  var ev = st.ev;
+  var g = byDate(st, d.id);
+  var coming = g.join.length + g.late.length;
+  var h = '<div><div class="headline-box"><p style="font-weight:700">' + esc(d.label) + "</p>" +
+    '<p class="mt1 small" style="font-weight:700;opacity:.9">' + (ev.mode === "vote" ? "来れる人" : "来る人 合計") + "</p>" +
+    '<p style="margin-top:.25rem;font-size:2.25rem;font-weight:700;line-height:1">' + coming + '<span style="font-size:1.25rem;margin-left:.25rem">人</span></p>' +
+    '<p class="mt2 small" style="opacity:.9">' + labels.join + " " + g.join.length + "人 ＋ " + labels.late + " " + g.late.length + "人</p></div>";
+  h += '<div class="grid3 mt3">' +
+    '<div class="stat-box"><p style="font-size:1.5rem;font-weight:700;color:var(--green)">' + g.join.length + '</p><p class="xsmall dim">' + labels.join + "</p></div>" +
+    '<div class="stat-box"><p style="font-size:1.5rem;font-weight:700;color:var(--amber)">' + g.late.length + '</p><p class="xsmall dim">' + labels.late + "</p></div>" +
+    '<div class="stat-box"><p style="font-size:1.5rem;font-weight:700">' + g.absent.length + '</p><p class="xsmall dim">' + labels.absent + "</p></div></div>";
+  h += nameSectionHtml(st, labels.join, g.join, "var(--green)", false);
+  h += nameSectionHtml(st, labels.late, g.late, "var(--amber)", true);
+  h += nameSectionHtml(st, labels.absent, g.absent, "var(--dim)", false);
+  return h + "</div>";
+}
+function voteRankingHtml(st, labels) {
+  var ev = st.ev;
+  var ranked = ev.dates.map(function(d) {
+    var g = byDate(st, d.id);
+    return { d: d, coming: g.join.length + g.late.length, join: g.join.length, late: g.late.length, absent: g.absent.length };
+  }).sort(function(a, b){ return b.coming - a.coming; });
+  var top = ranked.length > 0 ? ranked[0].coming : 0;
+  var h = '<section class="mt5" aria-label="候補日のランキング"><h3 style="font-size:1.125rem">来れる人数が多い順</h3><ol style="margin:.5rem 0 0;padding:0;list-style:none" class="stack2">';
+  ranked.forEach(function(x, i) {
+    var isTop = x.coming === top && top > 0;
+    h += '<li class="card row-between' + (isTop ? " rank-top" : "") + '" style="padding:1rem">' +
+      '<span style="width:2rem;text-align:center;font-size:1.5rem;font-weight:700;color:var(--accent)" class="shrink0">' + (i + 1) + "</span>" +
+      '<span class="grow" style="min-width:0"><span style="display:block;font-weight:700">' + esc(x.d.label) + "</span>" +
+      '<span class="small dim" style="display:block">' + labels.join + " " + x.join + "人 ／ " + labels.late + " " + x.late + "人 ／ " + labels.absent + " " + x.absent + "人</span></span>" +
+      '<span class="shrink0" style="text-align:right"><span style="display:block;font-size:1.875rem;font-weight:700;line-height:1">' + x.coming + '<span style="font-size:1rem;margin-left:.125rem">人</span></span>' +
+      (isTop ? '<span class="xsmall" style="display:block;margin-top:.25rem;font-weight:700;color:var(--accent)">いちばん多い</span>' : "") + "</span></li>";
+  });
+  h += "</ol>";
+  if (top > 0) h += '<p class="mt2 small dim" style="line-height:1.6">いちばん多い日を開催日にするのがおすすめです。各日の名前の内訳は下にあります。</p>';
+  return h + "</section>";
+}
+function expiredPoolHtml(st, expired, labels) {
+  var ev = st.ev;
+  var h = '<section class="pool mt8" aria-label="期限切れプール"><h3 style="font-size:1.125rem;color:var(--amber)">期限切れプール <span style="color:var(--text);font-size:1rem">' + expired.length + "人</span></h3>" +
+    '<p class="mt1 small dim" style="line-height:1.6">回答期限を過ぎてから届いた回答です。上の集計（人数・ランキング）には含まれていません。</p>' +
+    '<ul class="divide" style="margin:.5rem 0 0;padding:0;list-style:none">';
+  expired.forEach(function(r) {
+    h += '<li style="padding:.5rem 0"><div class="row-between"><span style="font-weight:700">' + esc(r.name) + "</span>";
+    if (st.confirmId === r.id) {
+      h += '<span class="flex shrink0" style="align-items:center"><span class="xsmall dim">全日程分を削除</span>' +
+        '<button type="button" class="btn btn-danger shrink0" style="width:auto;padding:.25rem .5rem;font-size:.75rem;min-height:0" data-mact="del-resp" data-id="' + r.id + '">削除する</button></span>';
+    } else {
+      h += '<button type="button" class="linklike shrink0" style="font-size:.75rem" data-mact="confirm-resp" data-id="' + r.id + '">削除</button>';
+    }
+    h += '</div><ul style="margin:.25rem 0 0;padding:0;list-style:none">';
+    r.answers.forEach(function(a) {
+      var d = ev.dates.find(function(x){ return x.id === a.dateId; });
+      var stLabel = a.status === "join" ? labels.join : a.status === "late" ? labels.late : labels.absent;
+      h += '<li class="small dim">' + (ev.mode !== "single" && d ? esc(d.label) + "：" : "") + stLabel +
+        (a.status === "late" && a.lateTime ? '<span style="margin-left:.25rem;font-weight:700;color:var(--amber)">（' + esc(a.lateTime) + "頃）</span>" : "") + "</li>";
+    });
+    h += "</ul></li>";
+  });
+  return h + "</ul></section>";
+}
+function bindSummary() {
+  var st = summaryState;
+  document.querySelectorAll("[data-mact]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      var act = b.getAttribute("data-mact");
+      if (act === "top") go({ kind: "home" });
+      else if (act === "survey") go({ kind: "survey", eventId: st.eventId });
+      else if (act === "reload") loadSummary();
+      else if (act === "confirm-resp") { st.confirmId = Number(b.getAttribute("data-id")); drawSummary(); }
+      else if (act === "del-resp") {
+        var id = Number(b.getAttribute("data-id"));
+        api("deleteResponse", { id: id, eventId: st.eventId, passcode: st.passcode || "" }).then(function(res) {
+          st.confirmId = null;
+          if (res.ok) loadSummary();
+          else { summaryPasscodes[st.eventId] = null; st.passcode = null; st.authorized = false; st.wrongPass = true; drawSummary(); }
+        }).catch(function() { st.confirmId = null; drawSummary(); });
+      }
+    });
+  });
+  var form = document.getElementById("pass-form");
+  if (form) {
+    var inp = document.getElementById("s-pass");
+    inp.addEventListener("input", function() {
+      st.input = inp.value.replace(/\D/g, "").slice(0, 4);
+      if (inp.value !== st.input) inp.value = st.input;
+      var btn = form.querySelector("[data-mact='pass-submit']");
+      if (btn) btn.disabled = st.input.length !== 4;
+    });
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      if (st.input.length !== 4) return;
+      st.wrongPass = false;
+      st.passcode = st.input;
+      summaryPasscodes[st.eventId] = st.input;
+      loadSummary();
+    });
+  }
+}
+
+/* ===== ルーター ===== */
+function render() {
+  if (view.kind === "home") renderHome();
+  else if (view.kind === "survey") renderSurvey(view.eventId, view.created);
+  else if (view.kind === "summary") renderSummary(view.eventId);
+}
+view = parseHashView();
+render();
+</script>
+</body>
+</html>
