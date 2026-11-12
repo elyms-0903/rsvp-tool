@@ -1,0 +1,1 @@
+{"tasks":{"deploy":"deployctl deploy main.ts","start":"deno run --unstable-kv --allow-net main.ts"},"unstable":["kv"]}
