@@ -1,0 +1,1 @@
+{"dependencies":{"@netlify/blobs":"^11.1.9"},"description":"出欠確認ページ作成ツール（Netlify 版: 静的クライアント + Functions + Blobs）","name":"rsvp-tool-netlify","private":true,"type":"module","version":"1.0.0"}

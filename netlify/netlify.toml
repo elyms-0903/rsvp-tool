@@ -1,0 +1,16 @@
+# 出欠確認ページ作成ツール（Netlify 版）
+# Netlify の Base directory を "netlify" にして使う前提（手順は DEPLOY.md）。
+# このファイルが base 配下にあるため、publish / functions の値は
+# サイト設定画面で個別に入力しなくても、ここから読み込まれる。
+
+[build]
+  publish = "public"
+  functions = "functions"
+
+# クライアント（src/client.html）は相対パス "api/<action>" へ POST するので、
+# /api/* を Functions の実パスへ書き換える（200 = リライト。POST ボディは保持される）。
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
