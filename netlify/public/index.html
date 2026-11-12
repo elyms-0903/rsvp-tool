@@ -85,7 +85,7 @@ p { margin: 0; }
 .card { border: 1px solid var(--border); background: var(--surface); border-radius: 1rem; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
 .card-alt { background: var(--surface-alt); border-radius: .75rem; padding: .75rem; }
 label.flabel, .flabel { display: block; font-size: 1rem; font-weight: 700; }
-input[type="text"], input[type="datetime-local"], textarea, select {
+input[type="text"], input[type="datetime-local"], input[type="date"], textarea, select {
   width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text);
   border-radius: .75rem; padding: .5rem .75rem; font-size: 1rem; line-height: 1.5; margin-top: .25rem;
   font-family: inherit;
@@ -377,7 +377,7 @@ function homeHtml() {
   h += "</div>";
   /* 回答期限 */
   h += '<div><label class="flabel" for="f-deadline">回答期限</label>' +
-    '<input type="datetime-local" id="f-deadline" value="' + esc(s.deadline) + '">' +
+    '<input type="date" id="f-deadline" value="' + esc((s.deadline || "").slice(0, 10)) + '">' +
     (s.deadline ? '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-deadline-label">' + formatDateLabel(s.deadline) + " まで</p>" : "") +
     '<p class="mt1 small dim" style="line-height:1.6">日付を選ぶと、その日の23:59が期限になります。期限を過ぎて届いた回答は、通常の集計には入らず「期限切れプール」に分けて受け付けます。回答ページにも期限が表示されます。</p></div>';
   /* 所・内容 */
@@ -474,9 +474,6 @@ function bindHome() {
   s.dates.forEach(function(d, i) {
     var inp = document.getElementById("f-date-" + i);
     if (!inp) return;
-    inp.addEventListener("focus", function() {
-      if (!inp.value && !d.label) { inp.value = todayAt("12:00"); s.dates[i] = { dateValue: inp.value, label: "" }; refreshHome(); refocusDate(i); }
-    });
     inp.addEventListener("change", function() {
       s.dates[i] = { dateValue: inp.value, label: "" };
       refreshHome();
@@ -484,11 +481,8 @@ function bindHome() {
   });
   el = document.getElementById("f-deadline");
   if (el) {
-    el.addEventListener("focus", function() { if (!el.value) { el.value = todayAt("23:59"); s.deadline = el.value; refreshHome(); } });
     el.addEventListener("change", function() {
-      var v = el.value;
-      if (v.length >= 10 && v.slice(0, 10) !== s.deadline.slice(0, 10)) s.deadline = v.slice(0, 10) + "T23:59";
-      else s.deadline = v;
+      s.deadline = el.value ? el.value + "T23:59" : "";
       refreshHome();
     });
   }
