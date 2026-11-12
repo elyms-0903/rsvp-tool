@@ -150,6 +150,24 @@ dl.info .row + .row { margin-top: .5rem; }
 dl.info dt { width: 2.5rem; flex-shrink: 0; font-weight: 700; color: var(--accent); }
 dl.info dd { margin: 0; }
 .prewrap { white-space: pre-wrap; }
+.dt-display {
+  width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: .75rem; padding: .5rem .75rem; font-size: 1rem; line-height: 1.5; margin-top: .25rem;
+  font-family: inherit; text-align: center; cursor: pointer;
+}
+.dt-panel { border: 1px solid var(--border); border-radius: .75rem; padding: .75rem; margin-top: .5rem; background: var(--surface-alt); }
+.dt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+.dt-title { font-weight: 700; }
+.dt-nav { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 9999px; width: 2.5rem; cursor: pointer; font-size: 1.25rem; font-family: inherit; }
+.dt-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; }
+.dt-week { text-align: center; font-size: .75rem; color: var(--dim); margin-bottom: .25rem; }
+.dt-day { border: none; background: transparent; color: var(--text); border-radius: 9999px; font-size: .9375rem; cursor: pointer; font-family: inherit; padding: 0; }
+.dt-day.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.dt-day.sel { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.dt-time { display: flex; align-items: center; gap: .5rem; margin-top: .75rem; }
+.dt-time select { flex: 1; width: auto; margin-top: 0; }
+.dt-foot { display: flex; gap: .5rem; margin-top: .75rem; }
+.dt-foot .btn { flex: 1; }
 .center { text-align: center; }
 .flex { display: flex; gap: .5rem; }
 .flex > .grow { flex: 1; min-width: 0; }
@@ -326,12 +344,6 @@ function renderHome() {
   appEl().innerHTML = homeHtml();
   bindHome();
 }
-function homeCanSubmit(s) {
-  var firstPicked = ((s.dates[0] && s.dates[0].dateValue) || (s.dates[0] && s.dates[0].label) || "") !== "";
-  var allPicked = s.dates.every(function(d){ return d.dateValue !== "" || d.label !== ""; });
-  return s.title.trim().length > 0 && PASSCODE_RE.test(s.passcode) && s.deadline.trim().length > 0 &&
-    firstPicked && allPicked && !s.submitting;
-}
 function homeHtml() {
   var s = homeState;
   var modeOptions = [
@@ -371,8 +383,9 @@ function homeHtml() {
       (s.mode === "single" ? "日時" : "日時 " + (i + 1)) + "</label>" +
       (i > 0 ? '<button type="button" class="linklike" data-act="del-date" data-i="' + i + '">削除</button>' : "") + "</div>" +
       (d.dateValue === "" && d.label !== "" ? '<p class="mt1 small dim">現在：' + esc(d.label) + "（カレンダーで選び直すと置き換わります）</p>" : "") +
-      '<input type="datetime-local" id="f-date-' + i + '" data-i="' + i + '" value="' + esc(d.dateValue) + '">' +
-      (d.dateValue ? '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-date-label-' + i + '">' + formatDateLabel(d.dateValue) + "</p>" : "") +
+      '<button type="button" class="dt-display" id="f-date-' + i + '">' + fmtDtDisplay(d.dateValue) + "</button>" +
+      '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-date-label-' + i + '">' + (d.dateValue ? formatDateLabel(d.dateValue) : "") + "</p>" +
+      '<div class="dt-panel" id="dt-panel-date-' + i + '" hidden></div>' +
       "</div>";
   });
   h += "</div>";
@@ -384,9 +397,10 @@ function homeHtml() {
   if (s.mode !== "single" && !firstPicked) h += '<p class="mt2 small dim">まず日時 1 をカレンダーで選ぶと、ここに「日時を追加」が出ます。</p>';
   h += "</div>";
   /* 回答期限 */
-  h += '<div><label class="flabel" for="f-deadline">回答期限</label>' +
-    '<input type="datetime-local" id="f-deadline" value="' + esc(s.deadline) + '">' +
-    (s.deadline ? '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-deadline-label">' + formatDateLabel(s.deadline) + " まで</p>" : "") +
+  h += '<div><span class="flabel">回答期限</span>' +
+    '<button type="button" class="dt-display" id="f-deadline">' + fmtDtDisplay(s.deadline) + "</button>" +
+    '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-deadline-label">' + (s.deadline ? formatDateLabel(s.deadline) + " まで" : "") + "</p>" +
+    '<div class="dt-panel" id="dt-panel-deadline" hidden></div>' +
     '<p class="mt1 small dim" style="line-height:1.6">初期値は23:59で入っています。必要な場合は日付・時刻を変更してください。期限を過ぎて届いた回答は、通常の集計には入らず「期限切れプール」に分けて受け付けます。回答ページにも期限が表示されます。</p></div>';
   /* 所・内容 */
   h += '<div><label class="flabel" for="f-place">所</label>' +
@@ -464,10 +478,124 @@ function myEventCardHtml(ev) {
   h += "</article>";
   return h;
 }
-function refreshHome() { if (view.kind === "home") { appEl().innerHTML = homeHtml(); bindHome(); } }
+/* ===== 日時ピッカー（ページ内製カレンダー）
+   iOS 標準の datetime-local ピッカーは、ページ側の再構築と干渉して選択が飛ぶ・値が空になる
+   事象が実機で繰り返し起きたため、自前のカレンダーパネルに置き換えた。
+   画面と内部状態はこのパネルの「決定」でのみ同期するので、ズレようがない。 */
+var dtEdit = null; /* { key, y, mo, day: "YYYY-MM-DD"|"", h, mi } 編集中のパネル状態 */
+function parseDtValue(v) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v || "");
+  if (!m) return null;
+  return { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
+}
+function composeDtValue(y, mo, d, h, mi) {
+  function p(n) { return String(n).padStart(2, "0"); }
+  return y + "-" + p(mo) + "-" + p(d) + "T" + p(h) + ":" + p(mi);
+}
+function calendarInfo(y, mo) {
+  return {
+    first: new Date(Date.UTC(y, mo - 1, 1)).getUTCDay(),
+    days: new Date(Date.UTC(y, mo, 0)).getUTCDate()
+  };
+}
+function fmtDtDisplay(v) { return v ? v.replace("T", " ").replace(/-/g, "/") : "タップして選ぶ"; }
+function dtOptions(n, sel) {
+  var h = "";
+  for (var i = 0; i < n; i++) h += '<option value="' + i + '"' + (i === sel ? " selected" : "") + ">" + String(i).padStart(2, "0") + "</option>";
+  return h;
+}
+function dtPanelHtml() {
+  var e = dtEdit;
+  var info = calendarInfo(e.y, e.mo);
+  var todayStr = todayAt("00:00").slice(0, 10);
+  var h = '<div class="dt-head"><button type="button" class="dt-nav" data-dt-nav="-1" aria-label="前の月">‹</button>' +
+    '<span class="dt-title">' + e.y + "年" + e.mo + "月</span>" +
+    '<button type="button" class="dt-nav" data-dt-nav="1" aria-label="次の月">›</button></div>';
+  h += '<div class="dt-grid dt-week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div class="dt-grid">';
+  for (var b = 0; b < info.first; b++) h += "<span></span>";
+  for (var d = 1; d <= info.days; d++) {
+    var val = composeDtValue(e.y, e.mo, d, 0, 0).slice(0, 10);
+    h += '<button type="button" class="dt-day' + (e.day === val ? " sel" : "") + (todayStr === val ? " today" : "") + '" data-dt-day="' + val + '">' + d + "</button>";
+  }
+  h += "</div>";
+  h += '<div class="dt-time"><span class="small" style="font-weight:700">時刻</span>' +
+    '<select data-dt-hour aria-label="時">' + dtOptions(24, e.h) + "</select>" +
+    '<span aria-hidden="true">:</span>' +
+    '<select data-dt-min aria-label="分">' + dtOptions(60, e.mi) + "</select></div>";
+  h += '<div class="dt-foot"><button type="button" class="btn btn-plain btn-sub" data-dt-cancel>キャンセル</button>' +
+    '<button type="button" class="btn btn-sub" data-dt-ok>決定</button></div>';
+  return h;
+}
+function closeAllDtPanels() {
+  document.querySelectorAll(".dt-panel").forEach(function(p) { p.hidden = true; p.innerHTML = ""; });
+  dtEdit = null;
+}
+function openDtPanel(key, currentValue) {
+  closeAllDtPanels();
+  var panel = document.getElementById("dt-panel-" + key);
+  if (!panel) return;
+  var p = parseDtValue(currentValue);
+  var base = p || parseDtValue(todayAt("12:00"));
+  dtEdit = {
+    key: key, y: base.y, mo: base.mo,
+    day: p ? currentValue.slice(0, 10) : "",
+    h: p ? p.h : (key === "deadline" ? 23 : 12),
+    mi: p ? p.mi : (key === "deadline" ? 59 : 0)
+  };
+  panel.innerHTML = dtPanelHtml();
+  panel.hidden = false;
+  bindDtPanel(panel);
+}
+function bindDtPanel(panel) {
+  panel.querySelectorAll("[data-dt-nav]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      var mo = dtEdit.mo + Number(b.getAttribute("data-dt-nav")), y = dtEdit.y;
+      if (mo < 1) { mo = 12; y--; }
+      if (mo > 12) { mo = 1; y++; }
+      dtEdit.mo = mo; dtEdit.y = y;
+      panel.innerHTML = dtPanelHtml(); bindDtPanel(panel);
+    });
+  });
+  panel.querySelectorAll("[data-dt-day]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      dtEdit.day = b.getAttribute("data-dt-day");
+      panel.innerHTML = dtPanelHtml(); bindDtPanel(panel);
+    });
+  });
+  var hs = panel.querySelector("[data-dt-hour]");
+  if (hs) hs.addEventListener("change", function() { dtEdit.h = Number(hs.value); });
+  var ms = panel.querySelector("[data-dt-min]");
+  if (ms) ms.addEventListener("change", function() { dtEdit.mi = Number(ms.value); });
+  var ok = panel.querySelector("[data-dt-ok]");
+  if (ok) ok.addEventListener("click", function() { applyDtEdit(); });
+  var cancel = panel.querySelector("[data-dt-cancel]");
+  if (cancel) cancel.addEventListener("click", function() { closeAllDtPanels(); });
+}
+function applyDtEdit() {
+  if (!dtEdit) return;
+  var s = homeState;
+  var day = dtEdit.day || composeDtValue(dtEdit.y, dtEdit.mo, 1, 0, 0).slice(0, 10);
+  var dp = parseDtValue(day + "T00:00");
+  var v = composeDtValue(dp.y, dp.mo, dp.d, dtEdit.h, dtEdit.mi);
+  if (dtEdit.key === "deadline") { s.deadline = v; }
+  else { s.dates[Number(dtEdit.key.slice(5))] = { dateValue: v, label: "" }; }
+  closeAllDtPanels();
+  refreshHome();
+}
+var homeHarvestSkip = false;
+function refreshHome() {
+  if (view.kind !== "home") return;
+  /* 再構築で画面の値が消える事故を防ぐため、作り直す前に画面の値を状態へ拾っておく
+     （ブラウザのフォーム復元や貼り付けなど、input イベントを伴わない入力の救済）。
+     状態を丸ごと差し替えた直後（編集開始など）は homeHarvestSkip で拾わない。 */
+  if (!homeHarvestSkip) harvestHomeFromDom();
+  homeHarvestSkip = false;
+  appEl().innerHTML = homeHtml(); bindHome();
+}
 function bindHome() {
   var s = homeState;
   var el;
+  dtEdit = null;
   el = document.getElementById("f-title");
   if (el) el.addEventListener("input", function() { s.title = el.value; refreshSubmitBtn(); });
   document.querySelectorAll("input[name='mode']").forEach(function(r) {
@@ -481,23 +609,21 @@ function bindHome() {
     r.addEventListener("change", function() { s.theme = r.value; setTheme(s.theme); refreshHome(); });
   });
   s.dates.forEach(function(d, i) {
-    var inp = document.getElementById("f-date-" + i);
-    if (!inp) return;
-    /* iOS のピッカー操作中に画面を再構築すると、選択が飛んだり値が空になったりする。
-       change では再構築せず、状態とラベルだけをその場で更新し、再構築は blur（ピッカーを閉じた後）に回す。 */
-    inp.addEventListener("change", function() {
-      s.dates[i] = { dateValue: inp.value, label: "" };
-      updateDateLabel(i, inp.value);
+    var disp = document.getElementById("f-date-" + i);
+    if (!disp) return;
+    disp.addEventListener("click", function() {
+      var panel = document.getElementById("dt-panel-date-" + i);
+      if (panel && !panel.hidden) { closeAllDtPanels(); return; }
+      openDtPanel("date-" + i, s.dates[i].dateValue);
     });
-    inp.addEventListener("blur", function() { refreshHome(); });
   });
   el = document.getElementById("f-deadline");
   if (el) {
-    el.addEventListener("change", function() {
-      s.deadline = el.value;
-      updateDeadlineLabel(el.value);
+    el.addEventListener("click", function() {
+      var panel = document.getElementById("dt-panel-deadline");
+      if (panel && !panel.hidden) { closeAllDtPanels(); return; }
+      openDtPanel("deadline", s.deadline);
     });
-    el.addEventListener("blur", function() { refreshHome(); });
   }
   el = document.getElementById("f-place");
   if (el) el.addEventListener("input", function() { s.place = el.value; });
@@ -529,24 +655,6 @@ function bindHome() {
     refreshHomeSoft();
   });
 }
-function refocusDate(i) { var n = document.getElementById("f-date-" + i); if (n) { n.focus(); try { n.showPicker(); } catch (e) {} } }
-/* 日時・期限のラベルを、画面再構築なしで書き換える（ピッカー操作中の再構築回避用） */
-function ensureLabelAfter(inputEl, id) {
-  var lab = document.getElementById(id);
-  if (!lab && inputEl) {
-    inputEl.insertAdjacentHTML("afterend", '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="' + id + '"></p>');
-    lab = document.getElementById(id);
-  }
-  return lab;
-}
-function updateDateLabel(i, v) {
-  var lab = ensureLabelAfter(document.getElementById("f-date-" + i), "f-date-label-" + i);
-  if (lab) lab.textContent = v ? formatDateLabel(v) : "";
-}
-function updateDeadlineLabel(v) {
-  var lab = ensureLabelAfter(document.getElementById("f-deadline"), "f-deadline-label");
-  if (lab) lab.textContent = v ? formatDateLabel(v) + " まで" : "";
-}
 /* 作成ボタンは常に押せるようにしておき、不足項目は送信時に sync＋検証して案内する。
    （ブラウザのフォーム復元で画面の値と内部状態がずれるケースでも、ボタンが無言で死なないように） */
 function refreshSubmitBtn() { /* 作成ボタンは無効化しない */ }
@@ -565,7 +673,7 @@ function homeAction(act, b) {
   if (act === "add-date") { s.dates.push({ dateValue: todayAt("12:00"), label: "" }); refreshHome(); }
   else if (act === "del-date") { s.dates.splice(Number(b.getAttribute("data-i")), 1); refreshHome(); }
   else if (act === "submit-form") { submitHomeForm(); }
-  else if (act === "cancel-edit") { var keep = { myIds: s.myIds, myEvents: s.myEvents, myLoaded: true }; homeState = freshHomeState(); homeState.myIds = keep.myIds; homeState.myEvents = keep.myEvents; homeState.myLoaded = true; refreshHome(); }
+  else if (act === "cancel-edit") { var keep = { myIds: s.myIds, myEvents: s.myEvents, myLoaded: true }; homeState = freshHomeState(); homeState.myIds = keep.myIds; homeState.myEvents = keep.myEvents; homeState.myLoaded = true; homeHarvestSkip = true; refreshHome(); }
   else if (act === "card-survey") { go({ kind: "survey", eventId: id }); }
   else if (act === "card-summary") { go({ kind: "summary", eventId: id }); }
   else if (act === "card-edit") {
@@ -628,6 +736,7 @@ function beginEdit(ev, pc) {
   s.place = ev.place; s.description = ev.description;
   s.passcode = ""; s.authError = null;
   setTheme(ev.theme);
+  homeHarvestSkip = true;
   refreshHome();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -640,11 +749,17 @@ function syncHomeFromDom() {
   el = document.getElementById("f-place"); if (el) s.place = el.value;
   el = document.getElementById("f-desc"); if (el) s.description = el.value;
   el = document.getElementById("f-pass"); if (el) s.passcode = el.value.replace(/\D/g, "").slice(0, 4);
-  el = document.getElementById("f-deadline"); if (el && el.value) s.deadline = el.value;
-  s.dates.forEach(function(d, i) {
-    var inp = document.getElementById("f-date-" + i);
-    if (inp && inp.value) s.dates[i] = { dateValue: inp.value, label: "" };
-  });
+  /* 日時・期限は自前カレンダーの「決定」で状態へ書くので、ここでは拾わない */
+}
+/* 再構築の前に、input イベントを伴わず画面に入った値（フォーム復元・貼り付け等）を状態へ拾う。
+   空欄の欄は状態側を正として触らない（わざと消した入力を復活させないため）。 */
+function harvestHomeFromDom() {
+  var s = homeState; if (!s) return;
+  var el;
+  el = document.getElementById("f-title"); if (el && el.value !== "") s.title = el.value;
+  el = document.getElementById("f-place"); if (el && el.value !== "") s.place = el.value;
+  el = document.getElementById("f-desc"); if (el && el.value !== "") s.description = el.value;
+  el = document.getElementById("f-pass"); if (el && el.value !== "") s.passcode = el.value.replace(/\D/g, "").slice(0, 4);
 }
 function submitHomeForm() {
   var s = homeState;
