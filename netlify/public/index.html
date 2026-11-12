@@ -85,7 +85,7 @@ p { margin: 0; }
 .card { border: 1px solid var(--border); background: var(--surface); border-radius: 1rem; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
 .card-alt { background: var(--surface-alt); border-radius: .75rem; padding: .75rem; }
 label.flabel, .flabel { display: block; font-size: 1rem; font-weight: 700; }
-input[type="text"], input[type="datetime-local"], input[type="date"], textarea, select {
+input[type="text"], input[type="datetime-local"], textarea, select {
   width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text);
   border-radius: .75rem; padding: .5rem .75rem; font-size: 1rem; line-height: 1.5; margin-top: .25rem;
   font-family: inherit;
@@ -207,10 +207,18 @@ function todayAt(time) {
   var d = String(now.getDate()).padStart(2, "0");
   return now.getFullYear() + "-" + m + "-" + d + "T" + time;
 }
-var DEFAULT_TITLE = "赤松課長新居祝い　たこ焼きパーティー";
-var DEFAULT_DATE_VALUE = "2026-11-29T15:00";
-var DEFAULT_DEADLINE = "2026-11-27T23:59";
-var DEFAULT_DESC = "赤松課長が社寮から新居に移ったので、\nそのお祝いにかこつけてパーティーしましょう\n\n出欠確認させてください";
+/* n日後（当日基準）の日時 "YYYY-MM-DDTHH:mm"。初期値は固定日ではなく相対指定にする。 */
+function daysFromNowAt(days, time) {
+  var d = new Date();
+  d.setDate(d.getDate() + days);
+  var m = String(d.getMonth() + 1).padStart(2, "0");
+  var dd = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + m + "-" + dd + "T" + time;
+}
+var DEFAULT_TITLE = "";
+var DEFAULT_DATE_VALUE = daysFromNowAt(7, "12:00");
+var DEFAULT_DEADLINE = daysFromNowAt(5, "23:59");
+var DEFAULT_DESC = "";
 
 /* ===== API ===== */
 function api(action, args) {
@@ -377,9 +385,9 @@ function homeHtml() {
   h += "</div>";
   /* 回答期限 */
   h += '<div><label class="flabel" for="f-deadline">回答期限</label>' +
-    '<input type="date" id="f-deadline" value="' + esc((s.deadline || "").slice(0, 10)) + '">' +
+    '<input type="datetime-local" id="f-deadline" value="' + esc(s.deadline) + '">' +
     (s.deadline ? '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="f-deadline-label">' + formatDateLabel(s.deadline) + " まで</p>" : "") +
-    '<p class="mt1 small dim" style="line-height:1.6">日付を選ぶと、その日の23:59が期限になります。期限を過ぎて届いた回答は、通常の集計には入らず「期限切れプール」に分けて受け付けます。回答ページにも期限が表示されます。</p></div>';
+    '<p class="mt1 small dim" style="line-height:1.6">初期値は23:59で入っています。必要な場合は日付・時刻を変更してください。期限を過ぎて届いた回答は、通常の集計には入らず「期限切れプール」に分けて受け付けます。回答ページにも期限が表示されます。</p></div>';
   /* 所・内容 */
   h += '<div><label class="flabel" for="f-place">所</label>' +
     '<input type="text" id="f-place" value="' + esc(s.place) + '" placeholder="未定のままでもOK（ページでは「未定」と出ます）"></div>';
@@ -482,7 +490,7 @@ function bindHome() {
   el = document.getElementById("f-deadline");
   if (el) {
     el.addEventListener("change", function() {
-      s.deadline = el.value ? el.value + "T23:59" : "";
+      s.deadline = el.value;
       refreshHome();
     });
   }
