@@ -295,7 +295,7 @@ function freshHomeState() {
     editingId: null, title: DEFAULT_TITLE, mode: "single", theme: "orange",
     dates: [{ dateValue: DEFAULT_DATE_VALUE, label: "" }],
     deadline: DEFAULT_DEADLINE, place: "", description: DEFAULT_DESC,
-    passcode: "", currentPasscode: "", authError: null, createError: false, submitting: false,
+    passcode: "", currentPasscode: "", authError: null, createError: false, formError: null, submitting: false,
     myIds: loadMyEventIds(), myEvents: [], myLoaded: false,
     unlockTarget: null, unlockPasscode: "", unlockError: false,
     deleteTarget: null, deletePasscode: "", deleteError: false,
@@ -401,8 +401,9 @@ function homeHtml() {
     (s.passcode.length > 0 && !PASSCODE_RE.test(s.passcode) ? '<p class="mt1 err">パスコードは4桁の数字で入力してください。</p>' : "") +
     "</div>";
   if (s.authError) h += '<p class="err" role="alert">' + esc(s.authError) + "</p>";
+  if (s.formError) h += '<p class="err" role="alert">' + esc(s.formError) + "</p>";
   if (s.createError) h += '<p class="err" role="alert">作成に失敗しました。もう一度お試しください。</p>';
-  h += '<button type="button" class="btn" data-act="submit-form"' + (homeCanSubmit(s) ? "" : " disabled") + ">" +
+  h += '<button type="button" class="btn" data-act="submit-form"' + (s.submitting ? " disabled" : "") + ">" +
     (s.submitting ? "作成中…" : s.editingId ? "変更を保存してページを見る" : "出欠ページを作成する") + "</button>";
   if (s.editingId) h += '<button type="button" class="btn btn-plain btn-sub" data-act="cancel-edit">編集をやめる</button>';
   h += "</div></section>";
@@ -482,17 +483,21 @@ function bindHome() {
   s.dates.forEach(function(d, i) {
     var inp = document.getElementById("f-date-" + i);
     if (!inp) return;
+    /* iOS のピッカー操作中に画面を再構築すると、選択が飛んだり値が空になったりする。
+       change では再構築せず、状態とラベルだけをその場で更新し、再構築は blur（ピッカーを閉じた後）に回す。 */
     inp.addEventListener("change", function() {
       s.dates[i] = { dateValue: inp.value, label: "" };
-      refreshHome();
+      updateDateLabel(i, inp.value);
     });
+    inp.addEventListener("blur", function() { refreshHome(); });
   });
   el = document.getElementById("f-deadline");
   if (el) {
     el.addEventListener("change", function() {
       s.deadline = el.value;
-      refreshHome();
+      updateDeadlineLabel(el.value);
     });
+    el.addEventListener("blur", function() { refreshHome(); });
   }
   el = document.getElementById("f-place");
   if (el) el.addEventListener("input", function() { s.place = el.value; });
@@ -525,12 +530,26 @@ function bindHome() {
   });
 }
 function refocusDate(i) { var n = document.getElementById("f-date-" + i); if (n) { n.focus(); try { n.showPicker(); } catch (e) {} } }
-/* フォーカスを奪わず、ボタンの有効/無効だけ更新する */
-function refreshSubmitBtn() {
-  var s = homeState; if (!s) return;
-  var btn = document.querySelector("[data-act='submit-form']");
-  if (btn) btn.disabled = !homeCanSubmit(s);
+/* 日時・期限のラベルを、画面再構築なしで書き換える（ピッカー操作中の再構築回避用） */
+function ensureLabelAfter(inputEl, id) {
+  var lab = document.getElementById(id);
+  if (!lab && inputEl) {
+    inputEl.insertAdjacentHTML("afterend", '<p class="mt1 small" style="font-weight:700;color:var(--accent)" id="' + id + '"></p>');
+    lab = document.getElementById(id);
+  }
+  return lab;
 }
+function updateDateLabel(i, v) {
+  var lab = ensureLabelAfter(document.getElementById("f-date-" + i), "f-date-label-" + i);
+  if (lab) lab.textContent = v ? formatDateLabel(v) : "";
+}
+function updateDeadlineLabel(v) {
+  var lab = ensureLabelAfter(document.getElementById("f-deadline"), "f-deadline-label");
+  if (lab) lab.textContent = v ? formatDateLabel(v) + " まで" : "";
+}
+/* 作成ボタンは常に押せるようにしておき、不足項目は送信時に sync＋検証して案内する。
+   （ブラウザのフォーム復元で画面の値と内部状態がずれるケースでも、ボタンが無言で死なないように） */
+function refreshSubmitBtn() { /* 作成ボタンは無効化しない */ }
 function refreshHomeSoft() { refreshSubmitBtn();
   var s = homeState;
   var ob = document.querySelector("[data-act='open-by-num']");
@@ -612,9 +631,31 @@ function beginEdit(ev, pc) {
   refreshHome();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+/* 送信前に、画面（DOM）に表示されている値を内部状態へ取り込む。
+   ブラウザのフォーム復元などで画面と状態がずれていても、見えている内容で送信できるようにする。 */
+function syncHomeFromDom() {
+  var s = homeState; if (!s) return;
+  var el;
+  el = document.getElementById("f-title"); if (el) s.title = el.value;
+  el = document.getElementById("f-place"); if (el) s.place = el.value;
+  el = document.getElementById("f-desc"); if (el) s.description = el.value;
+  el = document.getElementById("f-pass"); if (el) s.passcode = el.value.replace(/\D/g, "").slice(0, 4);
+  el = document.getElementById("f-deadline"); if (el && el.value) s.deadline = el.value;
+  s.dates.forEach(function(d, i) {
+    var inp = document.getElementById("f-date-" + i);
+    if (inp && inp.value) s.dates[i] = { dateValue: inp.value, label: "" };
+  });
+}
 function submitHomeForm() {
   var s = homeState;
-  if (!homeCanSubmit(s)) return;
+  syncHomeFromDom();
+  s.formError = null;
+  if (s.title.trim().length === 0) { s.formError = "タイトルを入力してください。"; refreshHome(); return; }
+  if (!PASSCODE_RE.test(s.passcode)) { s.formError = "管理用パスコード（4桁の数字）を入力してください。"; refreshHome(); return; }
+  if (s.deadline.trim().length === 0) { s.formError = "回答期限を選んでください。"; refreshHome(); return; }
+  var anyUnpicked = s.dates.some(function(d){ return d.dateValue === "" && d.label === ""; });
+  if (s.dates.length === 0 || anyUnpicked) { s.formError = "日時を選んでください。"; refreshHome(); return; }
+  if (s.submitting) return;
   s.submitting = true; s.createError = false; refreshHome();
   var done = function() { s.submitting = false; };
   if (s.editingId) {
