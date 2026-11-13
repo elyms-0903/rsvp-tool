@@ -168,6 +168,27 @@ dl.info dd { margin: 0; }
 .dt-time select { flex: 1; width: auto; margin-top: 0; }
 .dt-foot { display: flex; gap: .5rem; margin-top: .75rem; }
 .dt-foot .btn { flex: 1; }
+.tab-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+.tab-btn {
+  border: 2px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: 9999px; padding: .375rem .875rem; font-size: .9375rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.tab-btn.checked { border-color: var(--accent); background: var(--surface-alt); color: var(--accent); }
+.winput {
+  width: 5.5rem; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: .5rem; padding: .375rem .5rem; font-size: 1rem; font-family: inherit; text-align: right;
+}
+input[type="number"].amtinput {
+  width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: .75rem; padding: .5rem .75rem; font-size: 1rem; line-height: 1.5; margin-top: .25rem;
+  font-family: inherit;
+}
+.paid-check { width: 1.5rem; height: 1.5rem; accent-color: var(--green); flex-shrink: 0; cursor: pointer; }
+select.psel {
+  width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: .75rem; padding: .5rem .75rem; font-size: 1rem; line-height: 1.5; margin-top: .25rem; font-family: inherit;
+}
 .center { text-align: center; }
 .flex { display: flex; gap: .5rem; }
 .flex > .grow { flex: 1; min-width: 0; }
@@ -277,7 +298,7 @@ function forgetEventId(id) {
 var view = { kind: "home" };
 var summaryPasscodes = {}; /* eventId -> passcode（画面遷移内のみ保持） */
 function parseHashView() {
-  var m = window.location.hash.match(/^#\/(survey|summary)\/(\d+)$/);
+  var m = window.location.hash.match(/^#\/(survey|summary|settle)\/(\d+)$/);
   if (m) return { kind: m[1], eventId: Number(m[2]) };
   return { kind: "home" };
 }
@@ -313,6 +334,7 @@ function freshHomeState() {
     editingId: null, title: DEFAULT_TITLE, mode: "single", theme: "orange",
     dates: [{ dateValue: DEFAULT_DATE_VALUE, label: "" }],
     deadline: DEFAULT_DEADLINE, place: "", description: DEFAULT_DESC,
+    settleEnabled: null, settleMode: null, settleLocked: false, settleOrig: null,
     passcode: "", currentPasscode: "", authError: null, createError: false, formError: null, submitting: false,
     myIds: loadMyEventIds(), myEvents: [], myLoaded: false,
     unlockTarget: null, unlockPasscode: "", unlockError: false,
@@ -414,6 +436,38 @@ function homeHtml() {
     '<p class="mt1 small dim" style="line-height:1.6">集計ページを見たり、このページを編集・削除するときに必要です。回答する人には不要なので、配るときはパスコードを伝えないでください。</p>' +
     (s.passcode.length > 0 && !PASSCODE_RE.test(s.passcode) ? '<p class="mt1 err">パスコードは4桁の数字で入力してください。</p>' : "") +
     "</div>";
+  /* 清算機能（オン/オフは必ず選ぶ。オンなら記録できる人も選ぶ） */
+  h += '<fieldset' + (s.settleLocked ? " disabled" : "") + '><legend>清算機能（割り勘）</legend>' +
+    '<p class="mt1 small dim" style="line-height:1.6">当日にかかった費用を、参加メンバーで割り勘・清算する機能です。</p>' +
+    '<div class="mt2 grid2" role="radiogroup" aria-label="清算機能のオン・オフ">' +
+    '<label class="opt-card' + (s.settleEnabled === true ? " checked" : "") + '">' +
+    '<input type="radio" name="settle-onoff" value="on"' + (s.settleEnabled === true ? " checked" : "") + ">" +
+    '<span><span style="display:block;font-weight:700">オン（清算あり）</span>' +
+    '<span class="small dim" style="display:block">費用の清算ページが付きます</span></span></label>' +
+    '<label class="opt-card' + (s.settleEnabled === false ? " checked" : "") + '">' +
+    '<input type="radio" name="settle-onoff" value="off"' + (s.settleEnabled === false ? " checked" : "") + ">" +
+    '<span><span style="display:block;font-weight:700">オフ（清算なし）</span>' +
+    '<span class="small dim" style="display:block">出欠確認だけのページになります</span></span></label>' +
+    "</div>";
+  if (s.settleEnabled === true) {
+    h += '<div class="mt3"><span class="small" style="font-weight:700">立替を記録できる人</span>' +
+      '<div class="mt1 stack2" role="radiogroup" aria-label="立替を記録できる人">' +
+      '<label class="opt-card' + (s.settleMode === "anyone" ? " checked" : "") + '">' +
+      '<input type="radio" name="settle-mode" value="anyone"' + (s.settleMode === "anyone" ? " checked" : "") + ">" +
+      '<span><span style="display:block;font-weight:700">参加者なら誰でも</span>' +
+      '<span class="small dim" style="display:block">立替えた本人がその場で記録できます</span></span></label>' +
+      '<label class="opt-card' + (s.settleMode === "admin" ? " checked" : "") + '">' +
+      '<input type="radio" name="settle-mode" value="admin"' + (s.settleMode === "admin" ? " checked" : "") + ">" +
+      '<span><span style="display:block;font-weight:700">管理者だけ</span>' +
+      '<span class="small dim" style="display:block">記録にはパスコードが必要です</span></span></label>' +
+      "</div></div>";
+  }
+  if (s.settleLocked) {
+    h += '<p class="mt2 small" style="font-weight:700;color:var(--amber)">立替記録が入っているため、清算のオン／オフと記録できる人の設定は変更できません。</p>';
+  } else {
+    h += '<p class="mt2 small dim">立替登録が入るまでは、あとから変更できます。</p>';
+  }
+  h += "</fieldset>";
   if (s.authError) h += '<p class="err" role="alert">' + esc(s.authError) + "</p>";
   if (s.formError) h += '<p class="err" role="alert">' + esc(s.formError) + "</p>";
   if (s.createError) h += '<p class="err" role="alert">作成に失敗しました。もう一度お試しください。</p>';
@@ -457,6 +511,9 @@ function myEventCardHtml(ev) {
     '<button type="button" class="btn btn-plain btn-sub" style="font-size:.875rem" data-act="card-edit" data-id="' + ev.id + '">編集' + (ev.hasPasscode ? " 🔒" : "") + "</button>" +
     '<button type="button" class="btn btn-plain btn-sub" style="font-size:.875rem;color:var(--dim)" data-act="card-delete" data-id="' + ev.id + '">削除' + (ev.hasPasscode ? " 🔒" : "") + "</button>" +
     "</div>";
+  if (ev.settle && ev.settle.enabled) {
+    h += '<button type="button" class="btn btn-outline btn-sub mt2" data-act="card-settle" data-id="' + ev.id + '">清算ページ（割り勘）</button>';
+  }
   if (s.unlockTarget === ev.id) {
     h += '<div class="card-alt mt3"><label class="small" style="font-weight:700" for="unlock-' + ev.id + '">編集するにはパスコード（4桁）を入力してください</label>' +
       '<div class="mt2 flex"><input type="text" id="unlock-' + ev.id + '" class="passinput" value="' + esc(s.unlockPasscode) + '" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234" style="margin-top:0">' +
@@ -608,6 +665,12 @@ function bindHome() {
   document.querySelectorAll("input[name='theme']").forEach(function(r) {
     r.addEventListener("change", function() { s.theme = r.value; setTheme(s.theme); refreshHome(); });
   });
+  document.querySelectorAll("input[name='settle-onoff']").forEach(function(r) {
+    r.addEventListener("change", function() { s.settleEnabled = r.value === "on"; refreshHome(); });
+  });
+  document.querySelectorAll("input[name='settle-mode']").forEach(function(r) {
+    r.addEventListener("change", function() { s.settleMode = r.value; refreshHome(); });
+  });
   s.dates.forEach(function(d, i) {
     var disp = document.getElementById("f-date-" + i);
     if (!disp) return;
@@ -676,6 +739,7 @@ function homeAction(act, b) {
   else if (act === "cancel-edit") { var keep = { myIds: s.myIds, myEvents: s.myEvents, myLoaded: true }; homeState = freshHomeState(); homeState.myIds = keep.myIds; homeState.myEvents = keep.myEvents; homeState.myLoaded = true; homeHarvestSkip = true; refreshHome(); }
   else if (act === "card-survey") { go({ kind: "survey", eventId: id }); }
   else if (act === "card-summary") { go({ kind: "summary", eventId: id }); }
+  else if (act === "card-settle") { go({ kind: "settle", eventId: id }); }
   else if (act === "card-edit") {
     s.deleteTarget = null;
     var ev = s.myEvents.find(function(x){ return x.id === id; });
@@ -734,6 +798,10 @@ function beginEdit(ev, pc) {
     : [{ dateValue: "", label: ev.eventTime }];
   s.deadline = ev.deadline || "";
   s.place = ev.place; s.description = ev.description;
+  s.settleEnabled = ev.settle ? ev.settle.enabled === true : false;
+  s.settleMode = ev.settle && ev.settle.enabled ? ev.settle.mode : null;
+  s.settleLocked = ev.settle ? ev.settle.locked === true : false;
+  s.settleOrig = { enabled: s.settleEnabled, mode: s.settleMode || "anyone" };
   s.passcode = ""; s.authError = null;
   setTheme(ev.theme);
   homeHarvestSkip = true;
@@ -770,33 +838,47 @@ function submitHomeForm() {
   if (s.deadline.trim().length === 0) { s.formError = "回答期限を選んでください。"; refreshHome(); return; }
   var anyUnpicked = s.dates.some(function(d){ return d.dateValue === "" && d.label === ""; });
   if (s.dates.length === 0 || anyUnpicked) { s.formError = "日時を選んでください。"; refreshHome(); return; }
+  if (s.settleEnabled === null) { s.formError = "清算機能のオン／オフを選んでください。"; refreshHome(); return; }
+  if (s.settleEnabled === true && !s.settleMode) { s.formError = "立替を記録できる人を選んでください。"; refreshHome(); return; }
   if (s.submitting) return;
   s.submitting = true; s.createError = false; refreshHome();
   var done = function() { s.submitting = false; };
   if (s.editingId) {
+    var editId = s.editingId;
     api("updateEvent", {
-      id: s.editingId, currentPasscode: s.currentPasscode,
+      id: editId, currentPasscode: s.currentPasscode,
       title: s.title, mode: s.mode, theme: s.theme,
       dates: s.dates.map(function(d){ return { dateValue: d.dateValue, label: d.label }; }),
       place: s.place, description: s.description, deadline: s.deadline, passcode: s.passcode
     }).then(function(res) {
       done();
       if (!res.ok) { s.authError = "パスコードが違います。編集は開けていても、保存には今のパスコードの認証が必要です。"; refreshHome(); return; }
-      var id = s.editingId, pc = s.passcode;
-      summaryPasscodes[id] = pc;
-      /* 一覧の表示も更新する */
-      api("getEventDetail", { eventId: id }).then(function(d) {
-        if (d.event) {
-          s.myEvents = s.myEvents.map(function(x){ return x.id === id ? Object.assign({}, d.event, { hasPasscode: d.hasPasscode }) : x; });
-        }
-        go({ kind: "summary", eventId: id });
-      }).catch(function() { go({ kind: "summary", eventId: id }); });
+      var pc = s.passcode;
+      summaryPasscodes[editId] = pc;
+      /* 清算設定が変わっていれば（ロック中は変えられない）続けて保存する */
+      var settleChanged = !s.settleLocked && s.settleOrig &&
+        (s.settleOrig.enabled !== s.settleEnabled || (s.settleEnabled && s.settleOrig.mode !== s.settleMode));
+      var chain = settleChanged
+        ? api("updateSettleSettings", { id: editId, passcode: pc, enabled: s.settleEnabled, mode: s.settleMode || "anyone" })
+            .then(function(sres) { if (!sres.ok) s.authError = "清算の設定を保存できませんでした（ページ自体の変更は保存済みです）。"; })
+            .catch(function() { s.authError = "清算の設定を保存できませんでした（ページ自体の変更は保存済みです）。"; })
+        : Promise.resolve();
+      chain.then(function() {
+        api("getEventDetail", { eventId: editId }).then(function(d) {
+          if (d.event) {
+            s.myEvents = s.myEvents.map(function(x){ return x.id === editId ? Object.assign({}, d.event, { hasPasscode: d.hasPasscode }) : x; });
+          }
+          if (s.authError) { refreshHome(); return; }
+          go({ kind: "summary", eventId: editId });
+        }).catch(function() { go({ kind: "summary", eventId: editId }); });
+      });
     }).catch(function() { done(); s.createError = true; refreshHome(); });
   } else {
     api("createEvent", {
       title: s.title, mode: s.mode, theme: s.theme,
       dates: s.dates.filter(function(d){ return d.dateValue; }).map(function(d){ return { dateValue: d.dateValue }; }),
-      place: s.place, description: s.description, deadline: s.deadline, passcode: s.passcode
+      place: s.place, description: s.description, deadline: s.deadline, passcode: s.passcode,
+      settle: { enabled: s.settleEnabled === true, mode: s.settleMode || "anyone" }
     }).then(function(res) {
       done();
       rememberEventId(res.event.id);
@@ -904,6 +986,9 @@ function drawSurvey() {
     }
     h += "</form>";
   }
+  if (ev.settle && ev.settle.enabled) {
+    h += '<button type="button" class="btn btn-outline mt8" data-sact="settle">清算ページ（割り勘）を見る</button>';
+  }
   h += '<div class="mt10" style="text-align:right"><button type="button" class="linklike" style="font-size:.75rem" data-sact="summary">集計を見る</button></div>';
   h += "</div>";
   appEl().innerHTML = h;
@@ -916,6 +1001,7 @@ function bindSurvey() {
       var act = b.getAttribute("data-sact");
       if (act === "top") go({ kind: "home" });
       else if (act === "summary") go({ kind: "summary", eventId: st.ev.id });
+      else if (act === "settle") go({ kind: "settle", eventId: st.ev.id });
       else if (act === "again") { st.sentName = null; st.sentExpired = false; st.name = ""; st.answers = {}; drawSurvey(); }
     });
   });
@@ -1053,6 +1139,11 @@ function drawSummary() {
     h += "</div>";
   }
   if (expired.length > 0) h += expiredPoolHtml(st, expired, labels);
+  if (ev.settle && ev.settle.enabled) {
+    h += '<section class="card mt8" aria-label="清算"><h3 style="font-size:1.125rem">清算（割り勘）</h3>' +
+      '<p class="mt1 small dim" style="line-height:1.6">参加メンバーで費用を割り勘する清算ページです。メンバーの取り込みは清算ページの管理者メニューからできます。</p>' +
+      '<button type="button" class="btn btn-outline btn-sub mt3" data-mact="settle">清算ページを開く</button></section>';
+  }
   h += '<button type="button" class="linklike mt8" data-mact="top">← トップに戻る</button></div>';
   appEl().innerHTML = h;
   bindSummary();
@@ -1148,6 +1239,7 @@ function bindSummary() {
       var act = b.getAttribute("data-mact");
       if (act === "top") go({ kind: "home" });
       else if (act === "survey") go({ kind: "survey", eventId: st.eventId });
+      else if (act === "settle") go({ kind: "settle", eventId: st.eventId });
       else if (act === "reload") loadSummary();
       else if (act === "confirm-resp") { st.confirmId = Number(b.getAttribute("data-id")); drawSummary(); }
       else if (act === "del-resp") {
@@ -1180,11 +1272,410 @@ function bindSummary() {
   }
 }
 
+/* ===== 清算ページ ===== */
+var settleState = null;
+function fmtYen(n) { return Number(n).toLocaleString("ja-JP") + "円"; }
+/* ISO日時を「11/29 16:20」形式に（端末のローカル時刻） */
+function fmtStamp(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " +
+    String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+function renderSettle(eventId) {
+  settleState = {
+    eventId: eventId, ev: null, dateId: null, data: null, loaded: false,
+    passcode: null, adminInput: "", wrongPass: false,
+    showForm: false, editingId: null,
+    form: { payerId: null, title: "", amount: "", weights: {} },
+    formError: null, memberEdit: false, newMemberName: "",
+    confirmDelExpense: null, confirmDelMember: null, notice: null
+  };
+  appEl().innerHTML = loadingHtml();
+  api("getEventDetail", { eventId: eventId }).then(function(res) {
+    if (view.kind !== "settle" || view.eventId !== eventId) return;
+    if (!res.event) { appEl().innerHTML = notFoundHtml(); return; }
+    settleState.ev = res.event;
+    setTheme(res.event.theme);
+    settleState.dateId = res.event.dates.length > 0 ? res.event.dates[0].id : null;
+    var preset = summaryPasscodes[eventId];
+    if (preset) {
+      api("verifyPasscode", { eventId: eventId, passcode: preset }).then(function(v) {
+        if (v.ok) settleState.passcode = preset;
+        loadSettleData(false);
+      }).catch(function() { loadSettleData(false); });
+    } else {
+      loadSettleData(false);
+    }
+  }).catch(function() { if (view.kind === "settle") appEl().innerHTML = notFoundHtml(); });
+}
+function loadSettleData(keepScroll) {
+  var st = settleState;
+  var y = keepScroll ? window.scrollY : 0;
+  api("getSettle", { eventId: st.eventId, dateId: st.dateId }).then(function(res) {
+    if (view.kind !== "settle" || view.eventId !== st.eventId) return;
+    st.loaded = true;
+    if (!res.event) { appEl().innerHTML = notFoundHtml(); return; }
+    st.data = res;
+    st.ev = res.event;
+    st.dateId = res.dateId;
+    drawSettle();
+    if (keepScroll) window.scrollTo(0, y);
+  }).catch(function() { st.loaded = true; drawSettle(); });
+}
+function settleCanRecord() {
+  var st = settleState;
+  return st.data && (st.data.mode === "anyone" || st.passcode);
+}
+function drawSettle() {
+  var st = settleState, ev = st.ev, data = st.data;
+  if (!ev || !data) { appEl().innerHTML = notFoundHtml(); return; }
+  var h = '<div style="padding-bottom:2rem"><div class="row-between">' +
+    '<button type="button" class="linklike" data-tact="survey">← 回答ページ</button>' +
+    '<button type="button" class="linklike" data-tact="summary">集計を見る →</button></div>';
+  h += '<h2 class="mt3">' + esc(ev.title) + '</h2>' +
+    '<p class="mt1 xsmall dim">清算ページ（割り勘）　ページ番号 #' + ev.id + "</p>";
+  if (!data.enabled) {
+    h += '<p class="mt5 center small dim" style="border:1px dashed var(--border);background:var(--surface);border-radius:.75rem;padding:1.25rem;line-height:1.6">このページでは清算機能は使われていません。<br>使う場合は、トップの「編集」から清算をオンにしてください。</p>';
+    h += '<button type="button" class="linklike mt8" data-tact="top">← トップに戻る</button></div>';
+    appEl().innerHTML = h;
+    bindSettle();
+    return;
+  }
+  /* 日ごとの切替（複数日・候補日） */
+  if (ev.dates.length > 1) {
+    h += '<div class="tab-row mt4" role="tablist" aria-label="日ごとの清算">';
+    ev.dates.forEach(function(d) {
+      h += '<button type="button" class="tab-btn' + (st.dateId === d.id ? " checked" : "") + '" data-tact="tab" data-id="' + d.id + '">' + esc(d.label) + "</button>";
+    });
+    h += "</div>";
+    if (ev.mode === "vote") h += '<p class="mt2 small dim" style="line-height:1.6">候補日モードでは、開催が決まった日のタブで清算してください。</p>';
+    else h += '<p class="mt2 small dim" style="line-height:1.6">日ごとに別々に清算します。</p>';
+  }
+  var members = data.members;
+  /* メンバー */
+  h += '<section class="mt5" aria-label="メンバー"><h3 style="font-size:1.125rem">メンバー <span class="small dim">' + members.length + "人</span></h3>";
+  if (members.length === 0) {
+    h += '<p class="mt2 small dim" style="line-height:1.6">まだメンバーがいません。下の管理者メニューから「回答から取り込む」か、手で追加すると清算を始められます。</p>';
+  } else {
+    h += '<p class="mt2">' + members.map(function(m) { return '<span class="chip" style="margin:0 .25rem .25rem 0;font-size:.875rem;padding:.25rem .625rem">' + esc(m.name) + "</span>"; }).join("") + "</p>";
+  }
+  if (st.memberEdit && st.passcode) h += memberEditHtml(st);
+  h += "</section>";
+  if (st.notice) h += '<p class="mt3 small" role="status" style="background:var(--green-bg);border-radius:.75rem;padding:.5rem .75rem;font-weight:700;color:var(--green)">' + esc(st.notice) + "</p>";
+  /* 精算 */
+  h += '<section class="mt6" aria-label="清算"><h3 style="font-size:1.125rem">清算</h3>';
+  if (data.expenses.length === 0) {
+    h += '<p class="mt2 small dim" style="border:1px dashed var(--border);background:var(--surface);border-radius:.75rem;padding:1rem;line-height:1.6">立替記録がありません。下のボタンから記録すると、誰が誰にいくら払うかが自動で計算されます。</p>';
+  } else if (data.transfers.length === 0) {
+    h += '<p class="mt2 small" style="background:var(--green-bg);border-radius:.75rem;padding:.75rem;font-weight:700;color:var(--green)">全員の収支が合っています。送金の必要はありません。</p>';
+  } else {
+    h += '<div class="card mt2 divide" style="padding:.25rem 1rem">';
+    data.transfers.forEach(function(t, i) {
+      h += '<div class="row-between" style="padding:.625rem 0">' +
+        '<span><b>' + esc(t.fromName) + '</b> → <b>' + esc(t.toName) + '</b>' +
+        '<span style="display:block;font-weight:700;font-size:1.125rem">' + fmtYen(t.amount) + "</span>" +
+        (t.paidAt ? '<span class="xsmall" style="color:var(--green);font-weight:700">済 ' + fmtStamp(t.paidAt) + "</span>" : "") +
+        "</span>" +
+        '<label style="display:flex;align-items:center;gap:.375rem;cursor:pointer" class="shrink0">' +
+        '<input type="checkbox" class="paid-check" data-tact-paid="' + i + '"' + (t.paidAt ? " checked" : "") + '><span class="small">送金済み</span></label></div>';
+    });
+    h += '</div><p class="mt2 xsmall dim">端数は切り上げで計算しています。送金済みは誰でも付け外しできます（付けた日時が表示されます）。</p>';
+  }
+  h += "</section>";
+  /* 立替一覧 */
+  h += '<section class="mt6" aria-label="立替一覧"><h3 style="font-size:1.125rem">立替一覧</h3>';
+  if (data.expenses.length === 0) {
+    h += '<p class="mt2 small dim">まだ記録がありません。</p>';
+  } else {
+    h += '<div class="mt2 stack3">';
+    data.expenses.forEach(function(ex) { h += expenseCardHtml(st, ex); });
+    h += "</div>";
+  }
+  h += '<p class="mt3 small dim" style="line-height:1.6">金額などの間違いは編集できます。削除や重複登録の間違いは、管理者に連絡してください。</p>';
+  /* 立替フォーム */
+  if (settleCanRecord()) {
+    if (st.showForm) h += expenseFormHtml(st);
+    else h += '<button type="button" class="btn mt4" data-tact="exp-open">立替記録を追加</button>';
+  } else {
+    h += '<p class="mt4 small dim" style="border:1px dashed var(--border);background:var(--surface);border-radius:.75rem;padding:1rem;line-height:1.6">立替の記録は管理者だけができます。下の管理者メニューでパスコードを入れると記録できるようになります。</p>';
+  }
+  h += "</section>";
+  /* 明細 */
+  if (data.expenses.length > 0) {
+    h += '<section class="mt6" aria-label="明細"><h3 style="font-size:1.125rem">明細</h3><div class="card mt2 divide" style="padding:.25rem 1rem">';
+    data.rows.forEach(function(r) {
+      /* 右の大きな数字は「未清算分」。払う側は残額がある間だけ「－」の赤字、
+         払い終わったら 0円 を穏やかな色で。受け取る側は通常の文字色（黒系）で、受け取り終わったら 0円。 */
+      var un = r.unsettled || 0;
+      var headColor = un > 0 ? (r.net < 0 ? "#dc2626" : "var(--text)") : "var(--dim)";
+      var headText = (r.net < 0 && un > 0 ? "－" : "") + fmtYen(un);
+      h += '<div style="padding:.625rem 0"><div class="row-between"><span style="font-weight:700">' + esc(r.name) + '</span>' +
+        '<span style="font-weight:700;color:' + headColor + '">' + headText + "</span></div>" +
+        '<p class="xsmall dim">立替合計 ' + fmtYen(r.paid) + "　／　清算合計 " + fmtYen(r.settled || 0) + "　／　未清算合計 " + fmtYen(r.unsettled || 0) + "</p></div>";
+    });
+    h += '</div><p class="mt2 xsmall dim" style="line-height:1.6">右の金額は未清算分です。立替合計は立て替えた金額、未清算合計はまだ残っている分です。清算合計は、送金済みになった分と自分の負担分（立替と相殺された分）を合わせた額で、立替えた人は立替合計 ＝ 清算合計 ＋ 未清算合計 になります。<br>受け取る分は黒、－の赤は払う分です。0円は清算が終わった人です。</p></section>';
+  }
+  /* 管理者メニュー */
+  h += '<section class="card mt8" aria-label="管理者メニュー"><h3 style="font-size:1.125rem">管理者メニュー</h3>';
+  if (!st.passcode) {
+    h += '<p class="mt1 small dim" style="line-height:1.6">メンバーの取り込み・編集と、立替の削除は管理者だけができます。パスコード（4桁）を入れてください。</p>' +
+      '<div class="mt3 flex"><input type="text" id="a-pass" class="passinput" value="' + esc(st.adminInput) + '" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234" style="margin-top:0">' +
+      '<button type="button" class="btn shrink0" style="width:auto;padding:.5rem 1rem;font-size:1rem" data-tact="admin-open"' + (st.adminInput.length !== 4 ? " disabled" : "") + ">開く</button></div>" +
+      (st.wrongPass ? '<p class="mt2 err" role="alert">パスコードが違います。</p>' : "");
+  } else {
+    h += '<div class="mt3 stack2">' +
+      '<button type="button" class="btn btn-outline btn-sub" data-tact="import">回答から取り込む（参加＋遅れていきます）</button>' +
+      '<button type="button" class="btn btn-plain btn-sub" data-tact="medit-toggle">' + (st.memberEdit ? "メンバー編集を閉じる" : "メンバーを編集（追加・名前変更・削除）") + "</button>" +
+      '<p class="xsmall dim" style="line-height:1.6">取り込むと、その時点の回答に合わせてメンバーが追加・除外されます。立替の削除は、各記録の「削除」からできます。</p></div>';
+  }
+  h += "</section>";
+  h += '<button type="button" class="linklike mt8" data-tact="top">← トップに戻る</button></div>';
+  appEl().innerHTML = h;
+  bindSettle();
+}
+function expenseCardHtml(st, ex) {
+  var hasWeights = ex.shares.some(function(s) { return s.weight !== 1; });
+  var h = '<article class="card" style="padding:1rem"><div class="row-between"><span style="font-weight:700;font-size:1.125rem">' + esc(ex.title) + '</span>' +
+    '<span style="font-weight:700;font-size:1.125rem">' + fmtYen(ex.amount) + "</span></div>" +
+    '<p class="mt1 small dim">' + esc(ex.payerName) + " が立替え" +
+    (hasWeights ? '　<span class="chip">傾斜</span>' : "") +
+    '　<span class="xsmall">' + fmtStamp(ex.createdAt) + " 登録</span></p>" +
+    '<p class="mt2">' + ex.shares.map(function(s) {
+      return '<span class="chip" style="margin:0 .25rem .25rem 0">' + esc(s.name) + (s.weight !== 1 ? " ×" + s.weight : "") + "</span>";
+    }).join("") + '<span class="small dim">が清算</span></p>';
+  h += '<div class="mt2 flex">';
+  if (settleCanRecord()) h += '<button type="button" class="btn btn-plain btn-sub shrink0" style="width:auto;padding:.25rem .75rem;font-size:.875rem;min-height:0" data-tact="exp-edit" data-id="' + ex.id + '">編集</button>';
+  if (st.passcode) {
+    if (st.confirmDelExpense === ex.id) {
+      h += '<span class="flex shrink0" style="align-items:center"><span class="xsmall dim">この記録を削除します</span>' +
+        '<button type="button" class="btn btn-danger shrink0" style="width:auto;padding:.25rem .5rem;font-size:.75rem;min-height:0" data-tact="exp-del-go" data-id="' + ex.id + '">削除する</button></span>';
+    } else {
+      h += '<button type="button" class="linklike shrink0" style="font-size:.75rem" data-tact="exp-del" data-id="' + ex.id + '">削除</button>';
+    }
+  }
+  return h + "</div></article>";
+}
+function expenseFormHtml(st) {
+  var members = st.data.members;
+  var f = st.form;
+  var h = '<form id="exp-form" class="card mt4 stack3"><h4 style="font-size:1rem">' + (st.editingId ? "立替を編集" : "立替記録を追加") + "</h4>";
+  if (members.length === 0) {
+    h += '<p class="small dim" style="line-height:1.6">メンバーがいないため記録できません。先に管理者メニューからメンバーを取り込むか追加してください。</p>';
+  } else {
+    h += '<div><label class="flabel" for="x-payer">払った人</label><select id="x-payer" class="psel">' +
+      members.map(function(m) { return '<option value="' + m.id + '"' + (f.payerId === m.id ? " selected" : "") + ">" + esc(m.name) + "</option>"; }).join("") + "</select></div>";
+    h += '<div><label class="flabel" for="x-title">内容</label>' +
+      '<input type="text" id="x-title" value="' + esc(f.title) + '" placeholder="例：材料費" style="margin-top:.25rem"></div>';
+    h += '<div><label class="flabel" for="x-amount">金額（円）</label>' +
+      '<input type="number" id="x-amount" class="amtinput" value="' + esc(f.amount) + '" inputmode="numeric" min="1" placeholder="3500"></div>';
+    h += '<fieldset><legend>負担する人と傾斜</legend>' +
+      '<p class="mt1 small dim" style="line-height:1.6">傾斜は負担の倍率です（1＝普通、2＝2倍、0.5＝半分、0＝負担しない）。</p><div class="mt2 stack2">';
+    members.forEach(function(m) {
+      h += '<div class="row-between"><span>' + esc(m.name) + '</span>' +
+        '<span style="display:flex;align-items:center;gap:.25rem"><span class="small dim">×</span>' +
+        '<input type="text" class="winput" data-wmid="' + m.id + '" value="' + esc(f.weights[m.id] != null ? f.weights[m.id] : "1") + '" inputmode="decimal" aria-label="' + esc(m.name) + 'の傾斜"></span></div>';
+    });
+    h += "</div></fieldset>";
+    if (st.formError) h += '<p class="err" role="alert">' + esc(st.formError) + "</p>";
+    h += '<div class="flex"><button type="button" class="btn btn-plain btn-sub grow" data-tact="exp-cancel">やめる</button>' +
+      '<button type="submit" class="btn btn-sub grow">' + (st.editingId ? "変更を保存" : "記録する") + "</button></div>";
+  }
+  return h + "</form>";
+}
+function memberEditHtml(st) {
+  var h = '<div class="card-alt mt3 stack3"><p class="small" style="font-weight:700">メンバー編集</p>' +
+    '<p class="xsmall dim" style="line-height:1.6">「既定の傾斜」は、新しい立替を追加するときの初期値です。立替ごとに変更もできます。名前・傾斜を変えたら「保存」を押してください。</p>';
+  st.data.members.forEach(function(m) {
+    h += '<div class="stack2"><div class="flex" style="align-items:center"><input type="text" data-mname="' + m.id + '" value="' + esc(m.name) + '" style="margin-top:0" aria-label="名前">' +
+      '<button type="button" class="btn btn-plain btn-sub shrink0" style="width:auto;padding:.25rem .75rem;font-size:.875rem" data-tact="m-save" data-id="' + m.id + '">保存</button>';
+    if (st.confirmDelMember === m.id) {
+      h += '<button type="button" class="btn btn-danger shrink0" style="width:auto;padding:.25rem .5rem;font-size:.75rem;min-height:0" data-tact="m-del-go" data-id="' + m.id + '">本当に削除</button>';
+    } else {
+      h += '<button type="button" class="linklike shrink0" style="font-size:.75rem" data-tact="m-del" data-id="' + m.id + '">削除</button>';
+    }
+    h += '</div>' +
+      '<div style="display:flex;align-items:center;gap:.375rem"><span class="small dim shrink0">既定の傾斜</span>' +
+      '<span class="small dim">×</span>' +
+      '<input type="text" class="winput" data-mweight="' + m.id + '" value="' + esc(String(typeof m.defaultWeight === "number" ? m.defaultWeight : 1)) + '" inputmode="decimal" style="margin-top:0" aria-label="' + esc(m.name) + 'の既定の傾斜"></div></div>';
+  });
+  h += '<div class="flex"><input type="text" id="m-new" value="' + esc(st.newMemberName) + '" placeholder="追加するメンバーの名前" style="margin-top:0">' +
+    '<button type="button" class="btn btn-sub shrink0" style="width:auto;padding:.5rem 1rem;font-size:1rem" data-tact="m-add">追加</button></div></div>';
+  return h;
+}
+function openExpenseForm(st, ex) {
+  var weights = {};
+  if (ex) {
+    /* 編集では保存済みの傾斜を表示する（既定の傾斜では上書きしない） */
+    st.data.members.forEach(function(m) { weights[m.id] = "0"; });
+    ex.shares.forEach(function(s) { weights[s.memberId] = String(s.weight); });
+    st.form = { payerId: ex.payerId, title: ex.title, amount: String(ex.amount), weights: weights };
+    st.editingId = ex.id;
+  } else {
+    /* 新規では各メンバーの既定の傾斜を初期値にする（立替ごとに直せる） */
+    st.data.members.forEach(function(m) {
+      weights[m.id] = String(typeof m.defaultWeight === "number" ? m.defaultWeight : 1);
+    });
+    st.form = { payerId: st.data.members.length > 0 ? st.data.members[0].id : null, title: "", amount: "", weights: weights };
+    st.editingId = null;
+  }
+  st.formError = null;
+  st.showForm = true;
+  drawSettle();
+  var el = document.getElementById("exp-form");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function submitExpenseForm() {
+  var st = settleState, f = st.form;
+  var title = f.title.trim();
+  if (!title) { st.formError = "内容を入力してください。"; drawSettle(); return; }
+  var amount = Number(f.amount);
+  if (!isFinite(amount) || Math.floor(amount) !== amount || amount < 1) { st.formError = "金額は1円以上の整数で入力してください。"; drawSettle(); return; }
+  var weights = {}, any = false;
+  for (var k in f.weights) {
+    var w = Number(f.weights[k]);
+    if (!isFinite(w) || w < 0) { st.formError = "傾斜は0以上の数字で入力してください。"; drawSettle(); return; }
+    weights[k] = w;
+    if (w > 0) any = true;
+  }
+  if (!any) { st.formError = "負担する人を1人以上選んでください（傾斜が全員0になっています）。"; drawSettle(); return; }
+  if (!f.payerId) { st.formError = "払った人を選んでください。"; drawSettle(); return; }
+  var payload = {
+    eventId: st.eventId, dateId: st.dateId, passcode: st.passcode || undefined,
+    expense: { payerId: f.payerId, title: title, amount: amount, weights: weights }
+  };
+  var call = st.editingId
+    ? api("updateExpense", Object.assign(payload, { expenseId: st.editingId }))
+    : api("addExpense", payload);
+  call.then(function(res) {
+    if (!res.ok) {
+      st.formError = res.needPasscode ? "記録にはパスコードが必要です。管理者メニューで開いてください。" : "保存できませんでした。";
+      drawSettle();
+      return;
+    }
+    var wasEdit = st.editingId != null;
+    st.showForm = false; st.editingId = null;
+    st.notice = wasEdit ? "立替を変更しました。" : "立替を記録しました。";
+    loadSettleData(true);
+  }).catch(function(e) {
+    st.formError = e && e.message ? e.message : "保存に失敗しました。";
+    drawSettle();
+  });
+}
+function bindSettle() {
+  var st = settleState;
+  document.querySelectorAll("[data-tact]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      var act = b.getAttribute("data-tact");
+      var id = b.getAttribute("data-id") ? Number(b.getAttribute("data-id")) : null;
+      if (act === "top") go({ kind: "home" });
+      else if (act === "survey") go({ kind: "survey", eventId: st.eventId });
+      else if (act === "summary") go({ kind: "summary", eventId: st.eventId });
+      else if (act === "tab") { st.dateId = id; st.showForm = false; st.memberEdit = false; st.notice = null; loadSettleData(false); }
+      else if (act === "exp-open") openExpenseForm(st, null);
+      else if (act === "exp-cancel") { st.showForm = false; st.editingId = null; drawSettle(); }
+      else if (act === "exp-edit") {
+        var ex = st.data.expenses.find(function(x) { return x.id === id; });
+        if (ex) openExpenseForm(st, ex);
+      }
+      else if (act === "exp-del") { st.confirmDelExpense = id; drawSettle(); }
+      else if (act === "exp-del-go") {
+        api("deleteExpense", { eventId: st.eventId, dateId: st.dateId, expenseId: id, passcode: st.passcode || "" }).then(function(res) {
+          st.confirmDelExpense = null;
+          if (res.ok) { st.notice = "立替を削除しました。"; }
+          loadSettleData(true);
+        }).catch(function() { st.confirmDelExpense = null; drawSettle(); });
+      }
+      else if (act === "admin-open") {
+        if (st.adminInput.length !== 4) return;
+        api("verifyPasscode", { eventId: st.eventId, passcode: st.adminInput }).then(function(res) {
+          if (res.ok) {
+            st.passcode = st.adminInput;
+            summaryPasscodes[st.eventId] = st.adminInput;
+            st.wrongPass = false; st.adminInput = "";
+          } else st.wrongPass = true;
+          drawSettle();
+        }).catch(function() { st.wrongPass = true; drawSettle(); });
+      }
+      else if (act === "import") {
+        api("importMembers", { eventId: st.eventId, dateId: st.dateId, passcode: st.passcode || "" }).then(function(res) {
+          if (res.ok) st.notice = "回答から取り込みました（追加 " + res.added + "人・除外 " + res.removed + "人）。";
+          else st.notice = "取り込めませんでした。";
+          loadSettleData(true);
+        }).catch(function() { drawSettle(); });
+      }
+      else if (act === "medit-toggle") { st.memberEdit = !st.memberEdit; st.confirmDelMember = null; drawSettle(); }
+      else if (act === "m-add") {
+        var name = st.newMemberName.trim();
+        if (!name) return;
+        api("addMember", { eventId: st.eventId, dateId: st.dateId, passcode: st.passcode || "", name: name }).then(function(res) {
+          if (res.ok) { st.newMemberName = ""; st.notice = "メンバーを追加しました。"; }
+          loadSettleData(true);
+        }).catch(function() { drawSettle(); });
+      }
+      else if (act === "m-save") {
+        var inp = document.querySelector('[data-mname="' + id + '"]');
+        var nm = inp ? inp.value.trim() : "";
+        if (!nm) return;
+        var wInp = document.querySelector('[data-mweight="' + id + '"]');
+        var w = wInp ? Number(wInp.value) : 1;
+        if (!isFinite(w) || w < 0) { st.notice = "既定の傾斜は0以上の数字で入力してください。"; drawSettle(); return; }
+        api("renameMember", { eventId: st.eventId, dateId: st.dateId, passcode: st.passcode || "", memberId: id, name: nm }).then(function(res) {
+          if (!res.ok) return null;
+          return api("setMemberDefaultWeight", { eventId: st.eventId, dateId: st.dateId, passcode: st.passcode || "", memberId: id, weight: w });
+        }).then(function(res2) {
+          if (res2 && res2.ok) st.notice = "メンバーを保存しました。";
+          loadSettleData(true);
+        }).catch(function() { drawSettle(); });
+      }
+      else if (act === "m-del") { st.confirmDelMember = id; drawSettle(); }
+      else if (act === "m-del-go") {
+        api("removeMember", { eventId: st.eventId, dateId: st.dateId, passcode: st.passcode || "", memberId: id }).then(function(res) {
+          st.confirmDelMember = null;
+          if (res.ok) st.notice = "メンバーを削除しました。";
+          loadSettleData(true);
+        }).catch(function() { st.confirmDelMember = null; drawSettle(); });
+      }
+    });
+  });
+  document.querySelectorAll("[data-tact-paid]").forEach(function(cb) {
+    cb.addEventListener("change", function() {
+      var t = st.data.transfers[Number(cb.getAttribute("data-tact-paid"))];
+      if (!t) return;
+      api("setTransferPaid", {
+        eventId: st.eventId, dateId: st.dateId,
+        fromId: t.fromId, toId: t.toId, amount: t.amount, paid: cb.checked
+      }).then(function() { loadSettleData(true); }).catch(function() { drawSettle(); });
+    });
+  });
+  var passInp = document.getElementById("a-pass");
+  if (passInp) passInp.addEventListener("input", function() {
+    st.adminInput = passInp.value.replace(/\D/g, "").slice(0, 4);
+    if (passInp.value !== st.adminInput) passInp.value = st.adminInput;
+    var btn = document.querySelector("[data-tact='admin-open']");
+    if (btn) btn.disabled = st.adminInput.length !== 4;
+  });
+  var newInp = document.getElementById("m-new");
+  if (newInp) newInp.addEventListener("input", function() { st.newMemberName = newInp.value; });
+  var payerSel = document.getElementById("x-payer");
+  if (payerSel) payerSel.addEventListener("change", function() { st.form.payerId = Number(payerSel.value); });
+  var titleInp = document.getElementById("x-title");
+  if (titleInp) titleInp.addEventListener("input", function() { st.form.title = titleInp.value; });
+  var amtInp = document.getElementById("x-amount");
+  if (amtInp) amtInp.addEventListener("input", function() { st.form.amount = amtInp.value; });
+  document.querySelectorAll("[data-wmid]").forEach(function(inp) {
+    inp.addEventListener("input", function() { st.form.weights[inp.getAttribute("data-wmid")] = inp.value; });
+  });
+  var form = document.getElementById("exp-form");
+  if (form) form.addEventListener("submit", function(e) { e.preventDefault(); submitExpenseForm(); });
+}
+
 /* ===== ルーター ===== */
 function render() {
   if (view.kind === "home") renderHome();
   else if (view.kind === "survey") renderSurvey(view.eventId, view.created);
   else if (view.kind === "summary") renderSummary(view.eventId);
+  else if (view.kind === "settle") renderSettle(view.eventId);
 }
 view = parseHashView();
 render();
